@@ -74,6 +74,25 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
         default: break;
       }
 
+    case 5:
+      switch (player->craft_items[first]) {
+        case I_oak_planks:
+          if (
+            first == 0 &&
+            player->craft_items[first + 1] == I_oak_planks &&
+            player->craft_items[first + 2] == I_oak_planks &&
+            player->craft_items[first + 4] == I_stick &&
+            player->craft_items[first + 7] == I_stick
+          ) {
+            *item = 877; // wooden_pickaxe
+            *count = 1;
+            return;
+          }
+          break;
+
+        default: break;
+      }
+
     default: break;
 
   }
