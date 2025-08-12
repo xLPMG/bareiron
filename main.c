@@ -187,8 +187,8 @@ void handlePacket (int client_fd, int length, int packet_id) {
 
   }
 
-  if (packet_id < 16) printf("Unknown/bad packet: 0x0%X, length: %d, state: %d\n\n", packet_id, length, state);
-  else printf("Unknown/bad packet: 0x%X, length: %d, state: %d\n\n", packet_id, length, state);
+  // if (packet_id < 16) printf("Unknown/bad packet: 0x0%X, length: %d, state: %d\n\n", packet_id, length, state);
+  // else printf("Unknown/bad packet: 0x%X, length: %d, state: %d\n\n", packet_id, length, state);
   recv_count = recv(client_fd, recv_buffer, length, 0);
 
 }
