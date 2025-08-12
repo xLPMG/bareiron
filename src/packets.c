@@ -10,6 +10,7 @@
 #include "varnum.h"
 #include "registries.h"
 #include "worldgen.h"
+#include "crafting.h"
 
 // C->S Handshake
 int cs_handshake (int client_fd) {
@@ -432,6 +433,7 @@ int cs_useItemOn (int client_fd) {
 
 }
 
+// C->S Click Container
 int cs_clickContainer (int client_fd) {
 
   int window_id = readVarInt(client_fd);
@@ -446,18 +448,19 @@ int cs_clickContainer (int client_fd) {
   PlayerData *player;
   if (getPlayerData(client_fd, &player)) return 1;
 
-  uint8_t slot, count;
+  uint8_t slot, count, craft = false;
   uint16_t item;
   int tmp;
 
   for (int i = 0; i < changes_count; i ++) {
 
     slot = clientSlotToServerSlot(readUint16(client_fd));
+    if (slot > 40) craft = true;
 
     if (!readByte(client_fd)) { // no item?
       if (slot != 255) {
         player->inventory_items[slot] = 0;
-        player->inventory_count[slot] = 0;
+        if (slot <= 40) player->inventory_count[slot] = 0;
       }
       continue;
     }
@@ -471,11 +474,16 @@ int cs_clickContainer (int client_fd) {
     tmp = readVarInt(client_fd);
     recv(client_fd, recv_buffer, tmp, MSG_WAITALL);
 
-    if (item <= 255 && count > 0) {
+    if (count > 0) {
       player->inventory_items[slot] = item;
-      player->inventory_count[slot] = count;
+      if (slot <= 40) player->inventory_count[slot] = count;
     }
 
+  }
+
+  if (craft) {
+    getCraftingOutput(player, &count, &item);
+    sc_setContainerSlot(client_fd, window_id, 0, count, item);
   }
 
   return 0;

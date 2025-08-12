@@ -2,6 +2,7 @@
 #define H_GLOBALS
 
 #include <stdint.h>
+#include <unistd.h>
 
 #define true 1
 #define false 0
@@ -41,6 +42,7 @@ typedef struct {
   int8_t pitch;
   uint8_t hotbar;
   uint16_t inventory_items[41];
+  uint16_t craft_items[9];
   uint8_t inventory_count[41];
 } PlayerData;
 
