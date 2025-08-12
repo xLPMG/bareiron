@@ -545,6 +545,17 @@ int cs_setHeldItem (int client_fd) {
   return 0;
 }
 
+// S->C Set Held Item (clientbound)
+int sc_setHeldItem (int client_fd, uint8_t slot) {
+
+  writeVarInt(client_fd, sizeVarInt(0x62) + 1);
+  writeVarInt(client_fd, 0x62);
+
+  writeByte(client_fd, slot);
+
+  return 0;
+}
+
 // S->C Registry Data (Multiple packets)
 int sc_registries (int client_fd) {
 

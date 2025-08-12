@@ -67,6 +67,7 @@ void handlePacket (int client_fd, int length, int packet_id) {
         for (uint8_t i = 0; i < 82; i += 2) {
           sc_setContainerSlot(client_fd, 0, serverSlotToClientSlot(i / 2), inventory[i + 1], inventory[i]);
         }
+        sc_setHeldItem(client_fd, *(inventory - 1));
 
         sc_setDefaultSpawnPosition(client_fd, 8, 80, 8);
         sc_startWaitingForChunks(client_fd);
