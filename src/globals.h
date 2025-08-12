@@ -37,8 +37,8 @@ typedef struct {
   short x;
   short y;
   short z;
-  uint8_t yaw;
-  uint8_t pitch;
+  int8_t yaw;
+  int8_t pitch;
   uint8_t hotbar;
   uint16_t inventory_items[41];
   uint8_t inventory_count[41];

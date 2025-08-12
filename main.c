@@ -170,7 +170,7 @@ void handlePacket (int client_fd, int length, int packet_id) {
         player->y = cy;
         player->z = cz;
         if (packet_id == 0x1E) {
-          player->yaw = yaw / 180.0f * 127.0f;
+          player->yaw = (short)yaw % 180 * 127 / 180;
           player->pitch = pitch / 90.0f * 127.0f;
         }
 
