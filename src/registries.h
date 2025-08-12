@@ -5,9 +5,9 @@
 
 extern uint8_t registries_bin[5718];
 
-extern uint8_t B_to_I[256]; // Block-to-item mapping
-extern uint8_t I_to_B[256]; // Item-to-block mapping
 extern uint16_t block_palette[256]; // Block palette
+extern uint8_t B_to_I[256]; // Block-to-item mapping
+uint8_t I_to_B (uint16_t item); // Item-to-block mapping
 
 // Block identifiers
 #define B_acacia_hanging_sign 206

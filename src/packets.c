@@ -429,7 +429,7 @@ int cs_useItemOn (int client_fd) {
   if (getPlayerData(client_fd, &player)) return 1;
 
   uint16_t item = player->inventory_items[player->hotbar];
-  uint8_t block = item == 320 ? B_crafting_table : I_to_B[item]; // hack!!
+  uint8_t block = I_to_B(item);
 
   // if the selected item doesn't correspond to a block, exit
   if (block == 0) return 0;
