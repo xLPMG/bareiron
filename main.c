@@ -64,8 +64,10 @@ void handlePacket (int client_fd, int length, int packet_id) {
         short _x = x / 16, _z = z / 16;
 
         uint8_t *inventory = getPlayerInventory(client_fd);
-        for (uint8_t i = 0; i < 82; i += 2) {
-          sc_setContainerSlot(client_fd, 0, serverSlotToClientSlot(i / 2), inventory[i + 1], inventory[i]);
+        uint16_t item;
+        for (uint8_t i = 0; i < 123; i += 3) {
+          memcpy(&item, inventory + i, 2);
+          sc_setContainerSlot(client_fd, 0, serverSlotToClientSlot(i / 3), inventory[i + 2], item);
         }
         sc_setHeldItem(client_fd, *(inventory - 1));
 

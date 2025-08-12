@@ -32,7 +32,7 @@ extern uint8_t player_data[(
   2 +  // Z position (short)
   2 +  // Angles (both, i8)
   1 +  // Hotbar slot
-  82   // Inventory
+  123  // Inventory (u16 id, u8 count)
 ) * MAX_PLAYERS];
 extern int player_data_size;
 

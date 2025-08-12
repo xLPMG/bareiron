@@ -314,7 +314,7 @@ int sc_keepAlive (int client_fd) {
 }
 
 // S->C Set Container Slot
-int sc_setContainerSlot (int client_fd, int container, uint16_t slot, uint8_t count, uint8_t item) {
+int sc_setContainerSlot (int client_fd, int container, uint16_t slot, uint8_t count, uint16_t item) {
 
   writeVarInt(client_fd,
     1 +
@@ -361,7 +361,7 @@ int cs_playerAction (int client_fd) {
     // block was mined in survival
 
     uint8_t block = getBlockAt(x, y, z);
-    uint8_t item;
+    uint16_t item, tmp;
 
     if (block == B_oak_leaves) {
       if (sequence % 40 < 2) item = I_oak_sapling;
@@ -373,16 +373,17 @@ int cs_playerAction (int client_fd) {
     makeBlockChange(x, y, z, 0);
 
     int slot_pair = -1;
-    for (int i = 0; i < 36 * 2; i += 2) {
-      if (inventory[i] == item && inventory[i+1] < 64) {
+    for (int i = 0; i < 36 * 3; i += 3) {
+      memcpy(&tmp, inventory + i, 2);
+      if (tmp == item && inventory[i+2] < 64) {
         slot_pair = i;
         break;
       }
     }
 
     if (slot_pair == -1) {
-      for (int i = 0; i < 36 * 2; i += 2) {
-        if (inventory[i] == 0 || inventory[i+1] == 0) {
+      for (int i = 0; i < 36 * 3; i += 3) {
+        if ((inventory[i] == 0 && inventory[i + 1] == 0) || inventory[i+2] == 0) {
           slot_pair = i;
           break;
         }
@@ -390,10 +391,9 @@ int cs_playerAction (int client_fd) {
     }
 
     if (item && slot_pair != -1) {
-      uint8_t slot = serverSlotToClientSlot(slot_pair / 2);
-      inventory[slot_pair] = item;
-      inventory[slot_pair + 1] ++;
-      sc_setContainerSlot(client_fd, 0, slot, inventory[slot_pair + 1], item);
+      uint8_t slot = serverSlotToClientSlot(slot_pair / 3);
+      memcpy(inventory + slot_pair, &item, 2);
+      sc_setContainerSlot(client_fd, 0, slot, ++inventory[slot_pair + 2], item);
     }
 
   }
@@ -429,11 +429,11 @@ int cs_useItemOn (int client_fd) {
   uint8_t *inventory = getPlayerInventory(client_fd);
   // then, get pointer to selected hotbar slot
   // the hotbar position is in address (inventory - 1)
-  uint8_t *slot = inventory + (*(inventory - 1)) * 2;
+  uint8_t *slot = inventory + (*(inventory - 1)) * 3;
   // the inventory is split into id-amount pairs, get the amount address
-  uint8_t *amount = slot + 1;
+  uint8_t *amount = slot + 2;
   // convert the item id to a block id
-  uint8_t block = I_to_B[*slot];
+  uint8_t block = I_to_B[*(uint16_t *)slot];
 
   // if the selected item doesn't correspond to a block, exit
   if (block == 0) return 0;
@@ -471,7 +471,8 @@ int cs_clickContainer (int client_fd) {
 
   uint8_t *inventory = getPlayerInventory(client_fd);
   uint8_t slot, count;
-  int item, tmp;
+  uint16_t item;
+  int tmp;
 
   for (int i = 0; i < changes_count; i ++) {
 
@@ -479,8 +480,9 @@ int cs_clickContainer (int client_fd) {
 
     if (!readByte(client_fd)) { // no item?
       if (slot != 255) {
-        inventory[slot * 2] = 0;
-        inventory[slot * 2 + 1] = 0;
+        inventory[slot * 3] = 0;
+        inventory[slot * 3 + 1] = 0;
+        inventory[slot * 3 + 2] = 0;
       }
       continue;
     }
@@ -495,8 +497,8 @@ int cs_clickContainer (int client_fd) {
     recv(client_fd, recv_buffer, tmp, MSG_WAITALL);
 
     if (item <= 255 && count > 0) {
-      inventory[slot * 2] = (uint8_t)item;
-      inventory[slot * 2 + 1] = count;
+      memcpy(inventory + slot * 3, &item, 2);
+      inventory[slot * 3 + 2] = count;
     }
 
   }

@@ -20,6 +20,6 @@ uint8_t player_data[(
   2 +  // Z position (short)
   2 +  // Angles (both, i8)
   1 +  // Hotbar slot
-  82   // Inventory
+  123  // Inventory (u16 id, u8 count)
 ) * MAX_PLAYERS];
-int player_data_size = 16 + 4 + 2 + 2 + 2 + 2 + 1 + 82;
+int player_data_size = 16 + 4 + 2 + 2 + 2 + 2 + 1 + 123;
