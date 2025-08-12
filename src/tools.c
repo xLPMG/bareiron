@@ -175,12 +175,15 @@ void clearPlayerFD (int client_fd) {
 
 uint8_t serverSlotToClientSlot (uint8_t slot) {
   if (slot >= 0 && slot <= 9) return slot + 36;
+  if (slot >= 9 && slot <= 35) return slot;
   if (slot == 40) return 45;
   if (slot >= 36 && slot <= 39) return 3 - (slot - 36) + 5;
+  return 255;
 }
 
 uint8_t clientSlotToServerSlot (uint8_t slot) {
   if (slot >= 36 && slot <= 44) return slot - 36;
+  if (slot >= 9 && slot <= 35) return slot;
   if (slot == 45) return 40;
   if (slot >= 5 && slot <= 8) return 4 - (slot - 5) + 36;
   return 255;
