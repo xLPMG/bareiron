@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-extern uint8_t registries_bin[5718];
+extern uint8_t registries_bin[3096];
 
 extern uint16_t block_palette[256]; // Block palette
 extern uint8_t B_to_I[256]; // Block-to-item mapping

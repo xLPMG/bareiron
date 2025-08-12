@@ -22,7 +22,7 @@ function serializeRegistry(name, entries) {
   parts.push(Buffer.from([0x07]));
 
   // Registry name
-  const nameBuf = Buffer.from(name, "utf8");
+  const nameBuf = Buffer.from(name.replace("minecraft:", ""), "utf8");
   parts.push(writeVarInt(nameBuf.length));
   parts.push(nameBuf);
 
@@ -32,7 +32,7 @@ function serializeRegistry(name, entries) {
 
   // Serialize entries
   for (const entryName of entryKeys) {
-    const entryBuf = Buffer.from(entryName, "utf8");
+    const entryBuf = Buffer.from(entryName.replace("minecraft:", ""), "utf8");
     parts.push(writeVarInt(entryBuf.length));
     parts.push(entryBuf);
     parts.push(Buffer.from([0x00]));
@@ -60,8 +60,8 @@ function toCArray(buffer) {
 // Main function
 function convert() {
   const inputPath = path.join(__dirname, "registries.json");
-  const outputPath = path.join(__dirname, "registries.c");
-  const headerPath = path.join(__dirname, "registries.h");
+  const outputPath = path.join(__dirname, "_registries.c");
+  const headerPath = path.join(__dirname, "_registries.h");
 
   const json = JSON.parse(fs.readFileSync(inputPath, "utf8"));
 
@@ -95,7 +95,7 @@ extern uint8_t registries_bin[${output.length}];
 
   fs.writeFileSync(outputPath, finalCode);
   fs.writeFileSync(headerPath, headerCode);
-  console.log("Done. Wrote to `registries.c` and `registries.h`");
+  console.log("Done. Wrote to `_registries.c` and `_registries.h`");
 }
 
 convert();

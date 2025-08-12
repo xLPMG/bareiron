@@ -566,7 +566,7 @@ int sc_setHeldItem (int client_fd, uint8_t slot) {
   return 0;
 }
 
-// S->C Registry Data (Multiple packets)
+// S->C Registry Data (multiple packets) and Update Tags (configuration, multiple packets)
 int sc_registries (int client_fd) {
 
   printf("Sending Registries\n\n");
