@@ -181,18 +181,30 @@ uint8_t serverSlotToClientSlot (uint8_t slot) {
   return 255;
 }
 
-uint8_t clientSlotToServerSlot (uint8_t slot) {
-  if (slot >= 36 && slot <= 44) return slot - 36;
-  if (slot >= 9 && slot <= 35) return slot;
-  if (slot == 45) return 40;
-  if (slot >= 5 && slot <= 8) return 4 - (slot - 5) + 36;
+uint8_t clientSlotToServerSlot (int window_id, uint8_t slot) {
 
-  // map inventory crafting slots to player data crafting grid (semi-hack)
-  // this abuses the fact that the buffers are adjacent in player data
-  if (slot == 1) return 41;
-  if (slot == 2) return 42;
-  if (slot == 3) return 44;
-  if (slot == 4) return 45;
+  if (window_id == 0) { // player inventory
+
+    if (slot >= 36 && slot <= 44) return slot - 36;
+    if (slot >= 9 && slot <= 35) return slot;
+    if (slot == 45) return 40;
+    if (slot >= 5 && slot <= 8) return 4 - (slot - 5) + 36;
+
+    // map inventory crafting slots to player data crafting grid (semi-hack)
+    // this abuses the fact that the buffers are adjacent in player data
+    if (slot == 1) return 41;
+    if (slot == 2) return 42;
+    if (slot == 3) return 44;
+    if (slot == 4) return 45;
+
+  } else if (window_id == 12) { // crafting table
+
+    // same crafting offset overflow hack as above
+    if (slot >= 1 && slot <= 9) return 40 + slot;
+    // the rest of the slots are identical, just shifted by one
+    if (slot >= 10 && slot <= 45) return clientSlotToServerSlot(0, slot - 1);
+
+  }
 
   return 255;
 }

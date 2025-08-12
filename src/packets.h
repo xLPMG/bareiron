@@ -22,8 +22,9 @@ int sc_startWaitingForChunks (int client_fd);
 int sc_setCenterChunk (int client_fd, int x, int y);
 int sc_chunkDataAndUpdateLight (int client_fd, int _x, int _z);
 int sc_keepAlive (int client_fd);
-int sc_setContainerSlot (int client_fd, int container, uint16_t slot, uint8_t count, uint16_t item);
+int sc_setContainerSlot (int client_fd, int window_id, uint16_t slot, uint8_t count, uint16_t item);
 int sc_setHeldItem (int client_fd, uint8_t slot);
+int sc_openScreen (int client_fd, uint8_t window, const char *title, uint16_t length);
 int sc_registries(int client_fd);
 
 #endif

@@ -37,7 +37,7 @@ void clearPlayerFD (int client_fd);
 int givePlayerItem (int client_fd, uint16_t item);
 
 uint8_t serverSlotToClientSlot (uint8_t slot);
-uint8_t clientSlotToServerSlot (uint8_t slot);
+uint8_t clientSlotToServerSlot (int window_id, uint8_t slot);
 
 uint8_t getBlockChange (short x, short y, short z);
 void makeBlockChange (short x, short y, short z, uint8_t block);

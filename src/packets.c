@@ -315,18 +315,18 @@ int sc_keepAlive (int client_fd) {
 }
 
 // S->C Set Container Slot
-int sc_setContainerSlot (int client_fd, int container, uint16_t slot, uint8_t count, uint16_t item) {
+int sc_setContainerSlot (int client_fd, int window_id, uint16_t slot, uint8_t count, uint16_t item) {
 
   writeVarInt(client_fd,
     1 +
-    sizeVarInt(container) +
+    sizeVarInt(window_id) +
     1 + 2 +
     sizeVarInt(count) +
     (count > 0 ? sizeVarInt(item) + 2 : 0)
   );
   writeByte(client_fd, 0x14);
 
-  writeVarInt(client_fd, container);
+  writeVarInt(client_fd, window_id);
   writeVarInt(client_fd, 0);
   writeUint16(client_fd, slot);
 
@@ -381,12 +381,27 @@ int cs_playerAction (int client_fd) {
 
 }
 
+// S->C Open Screen
+int sc_openScreen (int client_fd, uint8_t window, const char *title, uint16_t length) {
+
+  writeVarInt(client_fd, 1 + 2 * sizeVarInt(window) + 1 + 2 + length);
+  writeByte(client_fd, 0x34);
+
+  writeVarInt(client_fd, window);
+  writeVarInt(client_fd, window);
+
+  writeByte(client_fd, 8); // string nbt tag
+  writeUint16(client_fd, length); // string length
+  send(client_fd, title, length, 0);
+
+}
+
 // C->S Use Item On
 int cs_useItemOn (int client_fd) {
 
   uint8_t hand = readByte(client_fd);
 
-  uint64_t pos = readUint64(client_fd);
+  int64_t pos = readInt64(client_fd);
   int x = pos >> 38;
   int y = pos << 52 >> 52;
   int z = pos << 26 >> 38;
@@ -404,10 +419,17 @@ int cs_useItemOn (int client_fd) {
 
   int sequence = readVarInt(client_fd);
 
+  uint8_t target = getBlockAt(x, y, z);
+  if (target == B_crafting_table) {
+    sc_openScreen(client_fd, 12, "Crafting", 8);
+    return 0;
+  }
+
   PlayerData *player;
   if (getPlayerData(client_fd, &player)) return 1;
 
-  uint8_t block = I_to_B[player->inventory_items[player->hotbar]];
+  uint16_t item = player->inventory_items[player->hotbar];
+  uint8_t block = item == 320 ? B_crafting_table : I_to_B[item]; // hack!!
 
   // if the selected item doesn't correspond to a block, exit
   if (block == 0) return 0;
@@ -454,7 +476,8 @@ int cs_clickContainer (int client_fd) {
 
   for (int i = 0; i < changes_count; i ++) {
 
-    slot = clientSlotToServerSlot(readUint16(client_fd));
+    slot = clientSlotToServerSlot(window_id, readUint16(client_fd));
+    // slots outside of the inventory overflow into the crafting buffer
     if (slot > 40) craft = true;
 
     if (!readByte(client_fd)) { // no item?
