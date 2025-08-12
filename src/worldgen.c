@@ -58,28 +58,19 @@ int interpolate (int a, int b, int c, int d, int x, int z) {
   return (top * (chunk_size - z) + bottom * z) / (chunk_size * chunk_size);
 }
 
-int getHeightAt (int x, int z, uint32_t chunk_hash) {
-
-  int _x = x / chunk_size;
-  int _z = z / chunk_size;
-  int rx = x % chunk_size;
-  int rz = z % chunk_size;
-
-  if (rx < 0) { rx += chunk_size; _x -= 1; }
-  if (rz < 0) { rz += chunk_size; _z -= 1; }
+int getHeightAt (int rx, int rz, int _x, int _z, uint32_t chunk_hash) {
 
   if (rx == 0 && rz == 0) {
     int height = getCornerHeight(chunk_hash);
     if (height > 67) return height - 1;
-  } else {
-    return interpolate(
-      getCornerHeight(chunk_hash),
-      getCornerHeight(getChunkHash(_x + 1, _z)),
-      getCornerHeight(getChunkHash(_x, _z + 1)),
-      getCornerHeight(getChunkHash(_x + 1, _z + 1)),
-      rx, rz
-    );
   }
+  return interpolate(
+    getCornerHeight(chunk_hash),
+    getCornerHeight(getChunkHash(_x + 1, _z)),
+    getCornerHeight(getChunkHash(_x, _z + 1)),
+    getCornerHeight(getChunkHash(_x + 1, _z + 1)),
+    rx, rz
+  );
 
 }
 
@@ -95,26 +86,11 @@ uint8_t getBlockAt (int x, int y, int z) {
   int rx = x % chunk_size;
   int rz = z % chunk_size;
 
-  int height;
-
-  // make remainders positive and move the cell index when negative
   if (rx < 0) { rx += chunk_size; _x -= 1; }
   if (rz < 0) { rz += chunk_size; _z -= 1; }
 
   uint32_t chunk_hash = getChunkHash(_x, _z);
-
-  if (rx == 0 && rz == 0) {
-    height = getCornerHeight(chunk_hash);
-    if (height > 67) height -= 1;
-  } else {
-    height = interpolate(
-      getCornerHeight(chunk_hash),
-      getCornerHeight(getChunkHash(_x + 1, _z)),
-      getCornerHeight(getChunkHash(_x, _z + 1)),
-      getCornerHeight(getChunkHash(_x + 1, _z + 1)),
-      rx, rz
-    );
-  }
+  int height = getHeightAt(rx, rz, _x, _z, chunk_hash);
 
   if (y >= 64 && y > height) {
 
@@ -128,7 +104,11 @@ uint8_t getBlockAt (int x, int y, int z) {
     if (tree_z < 3 || tree_z > chunk_size - 3) goto skip_tree;
     tree_z += _z * chunk_size;
 
-    uint8_t tree_y = getHeightAt(tree_x, tree_z, chunk_hash) + 1;
+    uint8_t tree_y = getHeightAt(
+      tree_x < 0 ? tree_x % chunk_size + chunk_size : tree_x % chunk_size,
+      tree_z < 0 ? tree_z % chunk_size + chunk_size : tree_z % chunk_size,
+      _x, _z, chunk_hash
+    ) + 1;
     if (tree_y < 64) goto skip_tree;
 
     if (x == tree_x && z == tree_z && y >= tree_y && y < tree_y + 6)
@@ -145,6 +125,8 @@ uint8_t getBlockAt (int x, int y, int z) {
       if (y == tree_y + 6 && dx == 1 && dz == 1 && (chunk_hash >> (x + z + y)) & 1) return B_air;
       return B_oak_leaves;
     }
+
+    return B_air;
 
   }
 
