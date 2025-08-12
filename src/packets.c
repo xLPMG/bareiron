@@ -592,6 +592,38 @@ int sc_registries (int client_fd) {
   writeVarInt(client_fd, sizeof(chicken_variant));
   send(client_fd, &chicken_variant, sizeof(chicken_variant), 0);
 
+  // update water tag
+  writeVarInt(client_fd, 3 + 5 + 2 + 5 + 1 + 1);
+  writeByte(client_fd, 0x0D);
+
+  writeVarInt(client_fd, 1); // array length
+  writeVarInt(client_fd, 5); // string length
+  char *fluid = "fluid";
+  send(client_fd, fluid, 5, 0);
+
+  writeVarInt(client_fd, 1); // array length
+  writeVarInt(client_fd, 5); // string length
+  char *water = "water";
+  send(client_fd, water, 5, 0);
+  writeVarInt(client_fd, 1); // array length
+  writeVarInt(client_fd, 2); // protocol id
+
+  // update mineable/pickaxe tag
+  writeVarInt(client_fd, 3 + 5 + 2 + 16 + 1 + 1);
+  writeByte(client_fd, 0x0D);
+
+  writeVarInt(client_fd, 1);  // array length
+  writeVarInt(client_fd, 5); // string length
+  char *block = "block";
+  send(client_fd, block, 5, 0);
+
+  writeVarInt(client_fd, 1);  // array length
+  writeVarInt(client_fd, 16); // string length
+  char *mineable = "mineable/pickaxe";
+  send(client_fd, mineable, 16, 0);
+  writeVarInt(client_fd, 1); // array length
+  writeVarInt(client_fd, 1); // protocol id
+
   return 0;
 
 }
