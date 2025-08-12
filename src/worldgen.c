@@ -7,6 +7,7 @@
 #include "globals.h"
 #include "tools.h"
 #include "registries.h"
+#include "worldgen.h"
 
 uint32_t getHash (const void *data, size_t len) {
   const uint8_t *bytes = data;
@@ -49,8 +50,6 @@ int getCornerHeight (uint32_t hash) {
   return height;
 
 }
-
-#define chunk_size 8
 
 int interpolate (int a, int b, int c, int d, int x, int z) {
   int top    = a * (chunk_size - x) + b * x;

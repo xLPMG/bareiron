@@ -7,6 +7,7 @@
 #include "globals.h"
 #include "varnum.h"
 #include "packets.h"
+#include "tools.h"
 
 static uint64_t htonll (uint64_t value) {
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
@@ -144,9 +145,7 @@ int reservePlayerData (int client_fd, char *uuid) {
     if (empty) {
       player_data[i].client_fd = client_fd;
       memcpy(player_data[i].uuid, uuid, 16);
-      player_data[i].x = 8;
-      player_data[i].y = 80;
-      player_data[i].z = 8;
+      player_data[i].y = -32767;
       return 0;
     }
   }

@@ -3,7 +3,10 @@
 
 #include <stdint.h>
 
+#define chunk_size 8
+
+uint32_t getChunkHash (short x, short z);
+int getHeightAt (int rx, int rz, int _x, int _z, uint32_t chunk_hash);
 uint8_t getBlockAt (int x, int y, int z);
-void writeChunkSection (int client_fd, int _x, int _z, int i);
 
 #endif

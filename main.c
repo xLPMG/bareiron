@@ -14,6 +14,7 @@
 #include "src/tools.h"
 #include "src/varnum.h"
 #include "src/packets.h"
+#include "src/worldgen.h"
 
 void handlePacket (int client_fd, int length, int packet_id) {
 
@@ -59,7 +60,19 @@ void handlePacket (int client_fd, int length, int packet_id) {
         PlayerData *player;
         if (getPlayerData(client_fd, &player)) break;
 
-        sc_synchronizePlayerPosition(client_fd, player->x, player->y, player->z, player->yaw * 180 / 127, player->pitch * 90 / 127);
+        if (player->y == -32767) { // is this a new player?
+
+          int _x = 8 / chunk_size;
+          int _z = 8 / chunk_size;
+          int rx = 8 % chunk_size;
+          int rz = 8 % chunk_size;
+
+          uint32_t chunk_hash = getChunkHash(_x, _z);
+          sc_synchronizePlayerPosition(client_fd, 8.5, getHeightAt(rx, rz, _x, _z, chunk_hash) + 1, 8.5, 0, 0);
+
+        } else {
+          sc_synchronizePlayerPosition(client_fd, player->x, player->y, player->z, player->yaw * 180 / 127, player->pitch * 90 / 127);
+        }
 
         for (uint8_t i = 0; i < 41; i ++) {
           sc_setContainerSlot(client_fd, 0, serverSlotToClientSlot(i), player->inventory_count[i], player->inventory_items[i]);
