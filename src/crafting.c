@@ -31,7 +31,7 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
           *count = 4;
           return;
         case I_oak_planks:
-          *item = 715; // oak_button
+          *item = I_oak_button;
           *count = 1;
           return;
 
@@ -43,7 +43,7 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
       switch (player->craft_items[first]) {
         case I_oak_planks:
           if (first_col != 2 && player->craft_items[first + 1] == I_oak_planks) {
-            *item = 731; // oak_pressure_plate
+            *item = I_oak_pressure_plate;
             *count = 1;
             return;
           } else if (first_row != 2 && player->craft_items[first + 3] == I_oak_planks) {
@@ -65,7 +65,7 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
             player->craft_items[first + 3] == I_oak_planks &&
             player->craft_items[first + 4] == I_oak_planks
           ) {
-            *item = 320; // crafting_table
+            *item = I_crafting_table;
             *count = 1;
             return;
           }
@@ -84,7 +84,7 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
             player->craft_items[first + 4] == I_stick &&
             player->craft_items[first + 7] == I_stick
           ) {
-            *item = 877; // wooden_pickaxe
+            *item = I_wooden_pickaxe;
             *count = 1;
             return;
           }
