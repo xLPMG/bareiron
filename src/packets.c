@@ -364,8 +364,10 @@ int cs_playerAction (int client_fd) {
     uint16_t item, tmp;
 
     if (block == B_oak_leaves) {
-      if (sequence % 40 < 2) item = I_oak_sapling;
-      else item = I_air;
+      if (sequence % 200 < 2) item = I_apple;
+      else if (sequence % 50 < 2) item = I_stick;
+      else if (sequence % 40 < 2) item = I_oak_sapling;
+      else item = 0;
     } else item = B_to_I[block];
 
     uint8_t *inventory = getPlayerInventory(client_fd);

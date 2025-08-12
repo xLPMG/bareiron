@@ -524,5 +524,7 @@ extern uint16_t block_palette[256]; // Block palette
 #define I_white_wool 213
 #define I_wither_rose 243
 #define I_yellow_wool 217
+#define I_apple 857
+#define I_stick 905
 
 #endif
