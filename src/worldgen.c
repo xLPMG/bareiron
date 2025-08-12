@@ -92,7 +92,7 @@ uint8_t getBlockAt (int x, int y, int z) {
   uint32_t chunk_hash = getChunkHash(_x, _z);
   int height = getHeightAt(rx, rz, _x, _z, chunk_hash);
 
-  if (y >= 64 && y > height) {
+  if (y >= 64 && y >= height) {
 
     uint8_t tree_position = chunk_hash % (chunk_size * chunk_size);
 
@@ -111,8 +111,10 @@ uint8_t getBlockAt (int x, int y, int z) {
     ) + 1;
     if (tree_y < 64) goto skip_tree;
 
-    if (x == tree_x && z == tree_z && y >= tree_y && y < tree_y + 6)
-      return B_oak_log;
+    if (x == tree_x && z == tree_z) {
+      if (y == tree_y - 1) return B_dirt;
+      if (y >= tree_y && y < tree_y + 6) return B_oak_log;
+    }
 
     uint8_t dx = x > tree_x ? x - tree_x : tree_x - x;
     uint8_t dz = z > tree_z ? z - tree_z : tree_z - z;
@@ -126,6 +128,7 @@ uint8_t getBlockAt (int x, int y, int z) {
       return B_oak_leaves;
     }
 
+    if (y == height) return B_grass_block;
     return B_air;
 
   }
