@@ -32,11 +32,9 @@ int getClientState (int client_fd);
 int getClientIndex (int client_fd);
 
 int reservePlayerData (int client_fd, char *uuid);
+int getPlayerData (int client_fd, PlayerData **output);
 void clearPlayerFD (int client_fd);
-int savePlayerPositionAndRotation (int client_fd, short x, short y, short z, int8_t yaw, int8_t pitch);
-int savePlayerPosition (int client_fd, short x, short y, short z);
-int restorePlayerPosition (int client_fd, short *x, short *y, short *z, int8_t *yaw, int8_t *pitch);
-uint8_t *getPlayerInventory (int client_fd);
+int givePlayerItem (int client_fd, uint16_t item);
 
 uint8_t serverSlotToClientSlot (uint8_t slot);
 uint8_t clientSlotToServerSlot (uint8_t slot);

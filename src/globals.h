@@ -21,19 +21,34 @@ extern ssize_t recv_count;
 extern uint8_t recv_buffer[256];
 
 extern uint32_t world_seed;
-extern uint8_t block_changes[50 * 1024];
+
+#pragma pack(push, 1)
+
+typedef struct {
+  short x;
+  short y;
+  short z;
+  uint8_t block;
+} BlockChange;
+
+typedef struct {
+  uint8_t uuid[16];
+  int client_fd;
+  short x;
+  short y;
+  short z;
+  uint8_t yaw;
+  uint8_t pitch;
+  uint8_t hotbar;
+  uint16_t inventory_items[41];
+  uint8_t inventory_count[41];
+} PlayerData;
+
+#pragma pack(pop)
+
+extern BlockChange block_changes[20000];
 extern int block_changes_count;
 
-extern uint8_t player_data[(
-  16 + // UUID
-  4 +  // File descriptor
-  2 +  // X position (short)
-  2 +  // Y position (short)
-  2 +  // Z position (short)
-  2 +  // Angles (both, i8)
-  1 +  // Hotbar slot
-  123  // Inventory (u16 id, u8 count)
-) * MAX_PLAYERS];
-extern int player_data_size;
+extern PlayerData player_data[MAX_PLAYERS];
 
 #endif

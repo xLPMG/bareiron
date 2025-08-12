@@ -56,21 +56,17 @@ void handlePacket (int client_fd, int length, int packet_id) {
 
         sc_loginPlay(client_fd);
 
-        short x = 8, y = 80, z = 8;
-        int8_t yaw = 0, pitch = 0;
-        restorePlayerPosition(client_fd, &x, &y, &z, &yaw, &pitch);
-        sc_synchronizePlayerPosition(client_fd, x, y, z, yaw * 180 / 127, pitch * 90 / 127);
+        PlayerData *player;
+        if (getPlayerData(client_fd, &player)) break;
 
-        short _x = x / 16, _z = z / 16;
+        sc_synchronizePlayerPosition(client_fd, player->x, player->y, player->z, player->yaw * 180 / 127, player->pitch * 90 / 127);
 
-        uint8_t *inventory = getPlayerInventory(client_fd);
-        uint16_t item;
-        for (uint8_t i = 0; i < 123; i += 3) {
-          memcpy(&item, inventory + i, 2);
-          sc_setContainerSlot(client_fd, 0, serverSlotToClientSlot(i / 3), inventory[i + 2], item);
+        for (uint8_t i = 0; i < 41; i ++) {
+          sc_setContainerSlot(client_fd, 0, serverSlotToClientSlot(i), player->inventory_count[i], player->inventory_items[i]);
         }
-        sc_setHeldItem(client_fd, *(inventory - 1));
+        sc_setHeldItem(client_fd, player->hotbar);
 
+        short _x = player->x / 16, _z = player->z / 16;
         sc_setDefaultSpawnPosition(client_fd, 8, 80, 8);
         sc_startWaitingForChunks(client_fd);
         sc_setCenterChunk(client_fd, _x, _z);
@@ -116,13 +112,13 @@ void handlePacket (int client_fd, int length, int packet_id) {
 
         if (packet_id == 0x1D) cs_setPlayerPosition(client_fd, &x, &y, &z);
         else cs_setPlayerPositionAndRotation(client_fd, &x, &y, &z, &yaw, &pitch);
-
         short cx = x + 0.5, cy = y, cz = z + 0.5;
-        short px, py, pz;
-        restorePlayerPosition (client_fd, &px, &py, &pz, NULL, NULL);
+
+        PlayerData *player;
+        if (getPlayerData(client_fd, &player)) break;
 
         short _x = (cx < 0 ? cx - 16 : cx) / 16, _z = (cz < 0 ? cz - 16 : cz) / 16;
-        short dx = _x - (px < 0 ? px - 16 : px) / 16, dz = _z - (pz < 0 ? pz - 16 : pz) / 16;
+        short dx = _x - (player->x < 0 ? player->x - 16 : player->x) / 16, dz = _z - (player->z < 0 ? player->z - 16 : player->z) / 16;
 
         if (dx != 0 || dz != 0) {
 
@@ -157,8 +153,13 @@ void handlePacket (int client_fd, int length, int packet_id) {
 
         }
 
-        if (packet_id == 0x1D) savePlayerPosition(client_fd, cx, cy, cz);
-        else savePlayerPositionAndRotation(client_fd, cx, cy, cz, yaw / 180.0f * 127.0f, pitch / 90.0f * 127.0f);
+        player->x = cx;
+        player->y = cy;
+        player->z = cz;
+        if (packet_id == 0x1E) {
+          player->yaw = yaw / 180.0f * 127.0f;
+          player->pitch = pitch / 90.0f * 127.0f;
+        }
 
         return;
       }
@@ -197,7 +198,9 @@ void handlePacket (int client_fd, int length, int packet_id) {
 
 int main () {
 
-  memset(block_changes, 0xFF, sizeof(block_changes));
+  for (int i = 0; i < sizeof(block_changes) / sizeof(BlockChange); i ++) {
+    block_changes[i].block = 0xFF;
+  }
 
   int server_fd, client_fd, opt = 1;
   struct sockaddr_in server_addr, client_addr;

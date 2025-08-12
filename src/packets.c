@@ -370,33 +370,9 @@ int cs_playerAction (int client_fd) {
       else item = 0;
     } else item = B_to_I[block];
 
-    uint8_t *inventory = getPlayerInventory(client_fd);
-
     makeBlockChange(x, y, z, 0);
 
-    int slot_pair = -1;
-    for (int i = 0; i < 36 * 3; i += 3) {
-      memcpy(&tmp, inventory + i, 2);
-      if (tmp == item && inventory[i+2] < 64) {
-        slot_pair = i;
-        break;
-      }
-    }
-
-    if (slot_pair == -1) {
-      for (int i = 0; i < 36 * 3; i += 3) {
-        if ((inventory[i] == 0 && inventory[i + 1] == 0) || inventory[i+2] == 0) {
-          slot_pair = i;
-          break;
-        }
-      }
-    }
-
-    if (item && slot_pair != -1) {
-      uint8_t slot = serverSlotToClientSlot(slot_pair / 3);
-      memcpy(inventory + slot_pair, &item, 2);
-      sc_setContainerSlot(client_fd, 0, slot, ++inventory[slot_pair + 2], item);
-    }
+    if (item) givePlayerItem(client_fd, item);
 
   }
 
@@ -427,24 +403,20 @@ int cs_useItemOn (int client_fd) {
 
   int sequence = readVarInt(client_fd);
 
-  // first, get pointer to player inventory
-  uint8_t *inventory = getPlayerInventory(client_fd);
-  // then, get pointer to selected hotbar slot
-  // the hotbar position is in address (inventory - 1)
-  uint8_t *slot = inventory + (*(inventory - 1)) * 3;
-  // the inventory is split into id-amount pairs, get the amount address
-  uint8_t *amount = slot + 2;
-  // convert the item id to a block id
-  uint8_t block = I_to_B[*(uint16_t *)slot];
+  PlayerData *player;
+  if (getPlayerData(client_fd, &player)) return 1;
+
+  uint8_t block = I_to_B[player->inventory_items[player->hotbar]];
 
   // if the selected item doesn't correspond to a block, exit
   if (block == 0) return 0;
   // if the selected slot doesn't hold any items, exit
-  if (*amount == 0) return 0;
+  if (player->inventory_count[player->hotbar] == 0) return 0;
   // decrease item amount in selected slot
-  *amount = *amount - 1;
+  player->inventory_count[player->hotbar] --;
   // clear item id in slot if amount is zero
-  if (*amount == 0) *slot = 0;
+  if (player->inventory_count[player->hotbar] == 0)
+    player->inventory_items[player->hotbar] = 0;
 
   switch (face) {
     case 0: makeBlockChange(x, y - 1, z, block); break;
@@ -471,7 +443,9 @@ int cs_clickContainer (int client_fd) {
 
   int changes_count = readVarInt(client_fd);
 
-  uint8_t *inventory = getPlayerInventory(client_fd);
+  PlayerData *player;
+  if (getPlayerData(client_fd, &player)) return 1;
+
   uint8_t slot, count;
   uint16_t item;
   int tmp;
@@ -482,9 +456,8 @@ int cs_clickContainer (int client_fd) {
 
     if (!readByte(client_fd)) { // no item?
       if (slot != 255) {
-        inventory[slot * 3] = 0;
-        inventory[slot * 3 + 1] = 0;
-        inventory[slot * 3 + 2] = 0;
+        player->inventory_items[slot] = 0;
+        player->inventory_count[slot] = 0;
       }
       continue;
     }
@@ -499,8 +472,8 @@ int cs_clickContainer (int client_fd) {
     recv(client_fd, recv_buffer, tmp, MSG_WAITALL);
 
     if (item <= 255 && count > 0) {
-      memcpy(inventory + slot * 3, &item, 2);
-      inventory[slot * 3 + 2] = count;
+      player->inventory_items[slot] = item;
+      player->inventory_count[slot] = count;
     }
 
   }
@@ -543,8 +516,10 @@ int cs_setPlayerPosition (int client_fd, double *x, double *y, double *z) {
 // C->S Set Held Item (serverbound)
 int cs_setHeldItem (int client_fd) {
 
-  uint8_t *hotbar = getPlayerInventory(client_fd) - 1;
-  *hotbar = (uint8_t)readUint16(client_fd);
+  PlayerData *player;
+  if (getPlayerData(client_fd, &player)) return 1;
+
+  player->hotbar = (uint8_t)readUint16(client_fd);
 
   return 0;
 }

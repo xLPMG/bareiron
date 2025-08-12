@@ -6,6 +6,7 @@
 
 #include "globals.h"
 #include "varnum.h"
+#include "packets.h"
 
 static uint64_t htonll (uint64_t value) {
 #if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
@@ -128,112 +129,49 @@ int getClientIndex (int client_fd) {
 
 int reservePlayerData (int client_fd, char *uuid) {
 
-  uint64_t tmp;
   for (int i = 0; i < MAX_PLAYERS; i ++) {
-    memcpy(&tmp, player_data + i * player_data_size, 8);
-    if (memcmp(&tmp, uuid, 8) == 0) {
-      memcpy(player_data + i * player_data_size + 16, &client_fd, 4);
+    if (memcmp(player_data[i].uuid, uuid, 16) == 0) {
+      player_data[i].client_fd = client_fd;
       return 0;
     }
-    if (tmp == 0) {
-      memcpy(player_data + i * player_data_size, uuid, 16);
-      memcpy(player_data + i * player_data_size + 16, &client_fd, 4);
-      player_data[i * player_data_size + 20] = 8;
-      player_data[i * player_data_size + 22] = 80;
-      player_data[i * player_data_size + 24] = 8;
+    uint8_t empty = true;
+    for (uint8_t j = 0; j < 16; j ++) {
+      if (player_data[i].uuid[j] != 0) {
+        empty = false;
+        break;
+      }
+    }
+    if (empty) {
+      player_data[i].client_fd = client_fd;
+      memcpy(player_data[i].uuid, uuid, 16);
+      player_data[i].x = 8;
+      player_data[i].y = 80;
+      player_data[i].z = 8;
       return 0;
     }
   }
 
   return 1;
 
+}
+
+int getPlayerData (int client_fd, PlayerData **output) {
+  for (int i = 0; i < MAX_PLAYERS; i ++) {
+    if (player_data[i].client_fd == client_fd) {
+      *output = &player_data[i];
+      return 0;
+    }
+  }
+  return 1;
 }
 
 void clearPlayerFD (int client_fd) {
-
-  int tmp;
   for (int i = 0; i < MAX_PLAYERS; i ++) {
-    memcpy(&tmp, player_data + i * player_data_size + 16, 4);
-    if (tmp == client_fd) {
-      tmp = 0;
-      memcpy(player_data + i * player_data_size + 16, &tmp, 4);
-      break;
+    if (player_data[i].client_fd == client_fd) {
+      player_data[i].client_fd = 0;
+      return;
     }
   }
-
-}
-
-int savePlayerPosition (int client_fd, short x, short y, short z) {
-
-  int tmp;
-  for (int i = 0; i < MAX_PLAYERS; i ++) {
-    if (memcmp(&client_fd, player_data + i * player_data_size + 16, 4) == 0) {
-
-      memcpy(player_data + i * player_data_size + 20, &x, 2);
-      memcpy(player_data + i * player_data_size + 22, &y, 2);
-      memcpy(player_data + i * player_data_size + 24, &z, 2);
-
-      return 0;
-    }
-  }
-
-  return 1;
-
-}
-
-int savePlayerPositionAndRotation (int client_fd, short x, short y, short z, int8_t yaw, int8_t pitch) {
-
-  int tmp;
-  for (int i = 0; i < MAX_PLAYERS; i ++) {
-    if (memcmp(&client_fd, player_data + i * player_data_size + 16, 4) == 0) {
-
-      memcpy(player_data + i * player_data_size + 20, &x, 2);
-      memcpy(player_data + i * player_data_size + 22, &y, 2);
-      memcpy(player_data + i * player_data_size + 24, &z, 2);
-
-      memcpy(player_data + i * player_data_size + 26, &yaw, 1);
-      memcpy(player_data + i * player_data_size + 27, &pitch, 1);
-
-      return 0;
-    }
-  }
-
-  return 1;
-
-}
-
-int restorePlayerPosition (int client_fd, short *x, short *y, short *z, int8_t *yaw, int8_t *pitch) {
-
-  int tmp;
-  for (int i = 0; i < MAX_PLAYERS; i ++) {
-    if (memcmp(&client_fd, player_data + i * player_data_size + 16, 4) == 0) {
-
-      memcpy(x, player_data + i * player_data_size + 20, 2);
-      memcpy(y, player_data + i * player_data_size + 22, 2);
-      memcpy(z, player_data + i * player_data_size + 24, 2);
-
-      if (yaw != NULL) memcpy(yaw, player_data + i * player_data_size + 26, 1);
-      if (pitch != NULL) memcpy(pitch, player_data + i * player_data_size + 27, 1);
-
-      return 0;
-    }
-  }
-
-  return 1;
-
-}
-
-uint8_t *getPlayerInventory (int client_fd) {
-
-  int tmp;
-  for (int i = 0; i < MAX_PLAYERS; i ++) {
-    if (memcmp(&client_fd, player_data + i * player_data_size + 16, 4) == 0) {
-      return player_data + i * player_data_size + 29;
-    }
-  }
-
-  return NULL;
-
 }
 
 uint8_t serverSlotToClientSlot (uint8_t slot) {
@@ -249,17 +187,47 @@ uint8_t clientSlotToServerSlot (uint8_t slot) {
   return 255;
 }
 
+int givePlayerItem (int client_fd, uint16_t item) {
+
+  PlayerData *player;
+  if (getPlayerData(client_fd, &player)) return 1;
+
+  uint8_t slot = 255;
+  for (int i = 0; i < 41; i ++) {
+    if (player->inventory_items[i] == item && player->inventory_count[i] < 64) {
+      slot = i;
+      break;
+    }
+  }
+
+  if (slot == 255) {
+    for (int i = 0; i < 41; i ++) {
+      if (player->inventory_items[i] == 0 && player->inventory_count[i] == 0) {
+        slot = i;
+        break;
+      }
+    }
+  }
+
+  if (slot == 255) return 1;
+
+  player->inventory_items[slot] = item;
+  player->inventory_count[slot] ++;
+  sc_setContainerSlot(client_fd, 0, serverSlotToClientSlot(slot), player->inventory_count[slot], item);
+
+  return 0;
+
+}
+
 uint8_t getBlockChange (short x, short y, short z) {
   short tmp;
-  for (int i = 0; i < block_changes_count * 7; i += 7) {
-    if (block_changes[i + 6] == 0xFF) continue;
-    memcpy(&tmp, block_changes + i, 2);
-    if (x != tmp) continue;
-    memcpy(&tmp, block_changes + i + 2, 2);
-    if (y != tmp) continue;
-    memcpy(&tmp, block_changes + i + 4, 2);
-    if (z != tmp) continue;
-    return block_changes[i + 6];
+  for (int i = 0; i < block_changes_count; i ++) {
+    if (block_changes[i].block == 0xFF) continue;
+    if (
+      block_changes[i].x == x &&
+      block_changes[i].y == y &&
+      block_changes[i].z == z
+    ) return block_changes[i].block;
   }
   return 0xFF;
 }
@@ -267,22 +235,21 @@ uint8_t getBlockChange (short x, short y, short z) {
 void makeBlockChange (short x, short y, short z, uint8_t block) {
 
   short tmp;
-  for (int i = 0; i < block_changes_count * 7; i += 7) {
-    memcpy(&tmp, block_changes + i, 2);
-    if (x != tmp) continue;
-    memcpy(&tmp, block_changes + i + 2, 2);
-    if (y != tmp) continue;
-    memcpy(&tmp, block_changes + i + 4, 2);
-    if (z != tmp) continue;
-    block_changes[i + 6] = block;
-    return;
+  for (int i = 0; i < block_changes_count; i ++) {
+    if (
+      block_changes[i].x == x &&
+      block_changes[i].y == y &&
+      block_changes[i].z == z
+    ) {
+      block_changes[i].block = block;
+      return;
+    }
   }
 
-  int end = block_changes_count * 7;
-  memcpy(block_changes + end, &x, 2);
-  memcpy(block_changes + end + 2, &y, 2);
-  memcpy(block_changes + end + 4, &z, 2);
-  block_changes[end + 6] = block;
+  block_changes[block_changes_count].x = x;
+  block_changes[block_changes_count].y = y;
+  block_changes[block_changes_count].z = z;
+  block_changes[block_changes_count].block = block;
   block_changes_count ++;
 
 }
