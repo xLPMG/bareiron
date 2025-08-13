@@ -5,9 +5,14 @@ const path = require("path");
 async function extractItemsAndBlocks () {
 
   // Block network IDs are defined in their own JSON file
+  // The item JSON file doesn't define IDs, we get those from the registries
   const blockSource = JSON.parse(await fs.readFile(`${__dirname}/notchian/generated/reports/blocks.json`, "utf8"));
-  // Items don't seem to have network IDs outside of registries.json
-  const itemSource = JSON.parse(await fs.readFile(`${__dirname}/notchian/generated/reports/registries.json`, "utf8"))["minecraft:item"].entries;
+
+  // Get registry data for extracting item IDs
+  const registriesJSON = JSON.parse(await fs.readFile(`${__dirname}/notchian/generated/reports/registries.json`, "utf8"));
+  const itemSource = registriesJSON["minecraft:item"].entries;
+  // Retrieve the registry list for blocks too, used later in tags
+  const blockRegistrySource = registriesJSON["minecraft:block"].entries;
 
   // Sort blocks by their network ID
   // Since we're only storing 256 blocks, this prioritizes the "common" ones first
@@ -52,7 +57,14 @@ async function extractItemsAndBlocks () {
     if (mapping.length === 256) break;
   }
 
-  return { blocks, items, palette, mapping };
+  // Build list of block IDs, but from the registries
+  // Tags refer to these IDs, not the actual blocks
+  const blockRegistry = {};
+  for (const block in blockRegistrySource) {
+    blockRegistry[block.replace("minecraft:", "")] = blockRegistrySource[block].protocol_id;
+  }
+
+  return { blocks, items, palette, mapping, blockRegistry };
 
 }
 
@@ -126,6 +138,53 @@ function serializeRegistry (name, entries) {
   return Buffer.concat([lengthBuf, fullData]);
 }
 
+// Serialize a tag update
+function serializeTags (tags) {
+  const parts = [];
+
+  console.log(tags);
+
+  // Packet ID for Update Tags
+  parts.push(Buffer.from([0x0D]));
+
+  // Tag type count
+  parts.push(writeVarInt(Object.keys(tags).length));
+
+  // Tag registry entry
+  for (const type in tags) {
+
+    // Tag registry identifier
+    const identifier = Buffer.from(type, "utf8");
+    parts.push(writeVarInt(identifier.length));
+    parts.push(identifier);
+
+    // Tag count
+    parts.push(writeVarInt(Object.keys(tags[type]).length));
+
+    // Write tag data
+    for (const tag in tags[type]) {
+      // Tag identifier
+      const identifier = Buffer.from(tag, "utf8");
+      parts.push(writeVarInt(identifier.length));
+      parts.push(identifier);
+      // Array of IDs
+      parts.push(writeVarInt(Object.keys(tags[type][tag]).length));
+      for (const id of tags[type][tag]) {
+        parts.push(writeVarInt(id));
+      }
+    }
+
+  }
+
+  // Combine all parts
+  const fullData = Buffer.concat(parts);
+
+  // Prepend packet length
+  const lengthBuf = writeVarInt(fullData.length);
+
+  return Buffer.concat([lengthBuf, fullData]);
+}
+
 // Convert to C-style hex byte array string
 function toCArray (buffer) {
   const hexBytes = [...buffer].map(b => `0x${b.toString(16).padStart(2, "0")}`);
@@ -157,27 +216,51 @@ async function convert () {
   const headerPath = __dirname + "/src/registries.h";
 
   const registries = await scanDirectory(inputPath);
-  const buffers = [];
+  const registryBuffers = [];
 
   for (const registry of requiredRegistries) {
     if (!(registry in registries)) {
       console.error(`Missing required registry "${registry}"!`);
       return;
     }
-    buffers.push(serializeRegistry(registry, registries[registry]));
+    registryBuffers.push(serializeRegistry(registry, registries[registry]));
   }
+  const fullRegistryBuffer = Buffer.concat(registryBuffers);
 
   const itemsAndBlocks = await extractItemsAndBlocks();
 
-  const output = Buffer.concat(buffers);
-  const cArray = toCArray(output);
+  const tagBuffer = serializeTags({
+    "fluid": {
+      "water": [ 2 ] // source water block
+    },
+    "block": {
+      "mineable/pickaxe": [
+        itemsAndBlocks.blockRegistry["stone"],
+        itemsAndBlocks.blockRegistry["cobblestone"]
+      ],
+      "mineable/axe": [
+        itemsAndBlocks.blockRegistry["oak_log"],
+        itemsAndBlocks.blockRegistry["oak_planks"],
+        itemsAndBlocks.blockRegistry["crafting_table"]
+      ],
+      "mineable/shovel": [
+        itemsAndBlocks.blockRegistry["grass_block"],
+        itemsAndBlocks.blockRegistry["dirt"]
+      ],
+    }
+  });
+
   const sourceCode = `\
 #include <stdint.h>
 #include "registries.h"
 
 // Binary contents of required "Registry Data" packets
 uint8_t registries_bin[] = {
-${cArray}
+${toCArray(fullRegistryBuffer)}
+};
+// Binary contents of "Update Tags" packets
+uint8_t tags_bin[] = {
+${toCArray(tagBuffer)}
 };
 
 // Block palette
@@ -200,7 +283,8 @@ uint8_t I_to_B (uint16_t item) {
 
 #include <stdint.h>
 
-extern uint8_t registries_bin[${output.length}];
+extern uint8_t registries_bin[${fullRegistryBuffer.length}];
+extern uint8_t tags_bin[${tagBuffer.length}];
 
 extern uint16_t block_palette[256]; // Block palette
 extern uint16_t B_to_I[256]; // Block-to-item mapping
