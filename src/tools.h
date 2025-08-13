@@ -25,6 +25,8 @@ double readDouble (int client_fd);
 
 void readString (int client_fd);
 
+uint32_t fast_rand ();
+
 extern int client_states[MAX_PLAYERS * 2];
 
 void setClientState (int client_fd, int new_state);
@@ -41,5 +43,7 @@ uint8_t clientSlotToServerSlot (int window_id, uint8_t slot);
 
 uint8_t getBlockChange (short x, short y, short z);
 void makeBlockChange (short x, short y, short z, uint8_t block);
+
+uint16_t getMiningResult (int client_fd, uint8_t block);
 
 #endif

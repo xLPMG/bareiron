@@ -5,6 +5,7 @@
 #include <unistd.h>
 
 #include "globals.h"
+#include "registries.h"
 #include "varnum.h"
 #include "packets.h"
 #include "tools.h"
@@ -100,6 +101,13 @@ void readString (int client_fd) {
   uint32_t length = readVarInt(client_fd);
   recv_count = recv(client_fd, recv_buffer, length, MSG_WAITALL);
   recv_buffer[recv_count] = '\0';
+}
+
+uint32_t fast_rand () {
+  rng_seed ^= rng_seed << 13;
+  rng_seed ^= rng_seed >> 17;
+  rng_seed ^= rng_seed << 5;
+  return rng_seed;
 }
 
 int client_states[MAX_PLAYERS * 2];
@@ -273,5 +281,43 @@ void makeBlockChange (short x, short y, short z, uint8_t block) {
   block_changes[block_changes_count].z = z;
   block_changes[block_changes_count].block = block;
   block_changes_count ++;
+
+}
+
+// Returns the result of mining a block, taking into account the block type and tools
+// Probability numbers obtained with this formula: N = floor(P * 32 ^ 2)
+uint16_t getMiningResult (int client_fd, uint8_t block) {
+
+  switch (block) {
+
+    case B_oak_leaves:
+      uint32_t r = fast_rand();
+      printf("fast_rand: %u, in distribution: %.3f\n", r, (float)r / (4294967295.0f));
+      if (r < 21474836) return I_apple; // 0.5%
+      if (r < 85899345) return I_stick; // 2%
+      if (r < 214748364) return I_oak_sapling; // 5%
+      return 0;
+      break;
+
+    case B_stone:
+    case B_cobblestone:
+      // Check if player is holding a pickaxe
+      PlayerData *player;
+      if (getPlayerData(client_fd, &player)) return 0;
+      uint16_t held_item = player->inventory_items[player->hotbar];
+      if (
+        held_item != I_wooden_pickaxe &&
+        held_item != I_stone_pickaxe &&
+        held_item != I_iron_pickaxe &&
+        held_item != I_golden_pickaxe &&
+        held_item != I_diamond_pickaxe &&
+        held_item != I_netherite_pickaxe
+      ) return 0;
+      break;
+
+    default: break;
+  }
+
+  return B_to_I[block];
 
 }

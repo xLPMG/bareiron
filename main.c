@@ -282,6 +282,14 @@ int main () {
           sc_keepAlive(client_fd);
           sc_updateTime(client_fd, world_time += 200);
           clock_gettime(CLOCK_REALTIME, &keepalive_last);
+          /**
+           * If the RNG seed ever hits 0, it'll never generate anything
+           * else. This is because the fast_rand function uses a simple
+           * XORshift. This isn't a common concern, so we only check for
+           * this periodically. If it does become zero, we reset it to
+           * the world seed as a good-enough fallback.
+           */
+          if (rng_seed == 0) rng_seed = world_seed;
         }
       }
 

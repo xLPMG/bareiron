@@ -22,6 +22,7 @@ extern ssize_t recv_count;
 extern uint8_t recv_buffer[256];
 
 extern uint32_t world_seed;
+extern uint32_t rng_seed;
 
 #pragma pack(push, 1)
 

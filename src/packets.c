@@ -386,14 +386,7 @@ int cs_playerAction (int client_fd) {
     // block was mined in survival
 
     uint8_t block = getBlockAt(x, y, z);
-    uint16_t item, tmp;
-
-    if (block == B_oak_leaves) {
-      if (sequence % 200 < 2) item = I_apple;
-      else if (sequence % 50 < 2) item = I_stick;
-      else if (sequence % 40 < 2) item = I_oak_sapling;
-      else item = 0;
-    } else item = B_to_I[block];
+    uint16_t tmp, item = getMiningResult(client_fd, block);
 
     makeBlockChange(x, y, z, 0);
 

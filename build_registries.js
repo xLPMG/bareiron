@@ -1,6 +1,16 @@
 const fs = require("fs/promises");
 const path = require("path");
 
+// Overrides for block-to-item conversion
+const blockToItemOverrides = {
+  "grass_block": "dirt",
+  "stone": "cobblestone"
+};
+
+const biomes = [
+  "plains"
+];
+
 // Extract item and block data from registry dump
 async function extractItemsAndBlocks () {
 
@@ -48,12 +58,13 @@ async function extractItemsAndBlocks () {
   const exceptions = [ "air", "water", "lava" ];
 
   // While we're at it, map block IDs to item IDs
-  const mapping = [];
+  const mapping = [], mappingWithOverrides = [];
 
   for (const block in blocks) {
     if (!(block in items) && !exceptions.includes(block)) continue;
     palette[block] = blocks[block];
     mapping.push(items[block] || 0);
+    mappingWithOverrides.push(items[blockToItemOverrides[block]] || items[block] || 0);
     if (mapping.length === 256) break;
   }
 
@@ -64,7 +75,7 @@ async function extractItemsAndBlocks () {
     blockRegistry[block.replace("minecraft:", "")] = blockRegistrySource[block].protocol_id;
   }
 
-  return { blocks, items, palette, mapping, blockRegistry };
+  return { blocks, items, palette, mapping, mappingWithOverrides, blockRegistry };
 
 }
 
@@ -206,10 +217,6 @@ const requiredRegistries = [
   "damage_type"
 ];
 
-const biomes = [
-  "plains"
-];
-
 async function convert () {
 
   const inputPath = __dirname + "/notchian/generated/data/minecraft";
@@ -276,7 +283,7 @@ ${toCArray(tagBuffer)}
 // Block palette
 uint16_t block_palette[] = { ${Object.values(itemsAndBlocks.palette).join(", ")} };
 // Block-to-item mapping
-uint16_t B_to_I[] = { ${itemsAndBlocks.mapping.join(", ")} };
+uint16_t B_to_I[] = { ${itemsAndBlocks.mappingWithOverrides.join(", ")} };
 // Item-to-block mapping
 uint8_t I_to_B (uint16_t item) {
   switch (item) {
