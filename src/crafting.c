@@ -88,6 +88,28 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
             *count = 1;
             return;
           }
+          if (
+            first < 2 &&
+            player->craft_items[first + 1] == I_oak_planks &&
+            player->craft_items[first + 3] == I_oak_planks &&
+            player->craft_items[first + 4] == I_stick &&
+            player->craft_items[first + 7] == I_stick
+          ) {
+            *item = I_wooden_axe;
+            *count = 1;
+            return;
+          }
+          if (
+            first < 2 &&
+            player->craft_items[first + 1] == I_oak_planks &&
+            player->craft_items[first + 4] == I_oak_planks &&
+            player->craft_items[first + 3] == I_stick &&
+            player->craft_items[first + 6] == I_stick
+          ) {
+            *item = I_wooden_axe;
+            *count = 1;
+            return;
+          }
           break;
 
         default: break;
