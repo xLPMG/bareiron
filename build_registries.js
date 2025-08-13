@@ -142,8 +142,6 @@ function serializeRegistry (name, entries) {
 function serializeTags (tags) {
   const parts = [];
 
-  console.log(tags);
-
   // Packet ID for Update Tags
   parts.push(Buffer.from([0x0D]));
 
@@ -283,6 +281,7 @@ uint8_t I_to_B (uint16_t item) {
 
 #include <stdint.h>
 
+// Binary packet data (${fullRegistryBuffer.length + tagBuffer.length} bytes total)
 extern uint8_t registries_bin[${fullRegistryBuffer.length}];
 extern uint8_t tags_bin[${tagBuffer.length}];
 
