@@ -1,3 +1,5 @@
 .vscode
 notchian
 bareiron
+src/registries.c
+src/registries.h
