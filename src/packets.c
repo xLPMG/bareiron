@@ -230,6 +230,30 @@ int sc_setDefaultSpawnPosition (int client_fd, long x, long y, long z) {
 
 }
 
+// S->C Player Abilities (clientbound)
+int sc_playerAbilities (int client_fd, uint8_t flags) {
+
+  writeVarInt(client_fd, 10);
+  writeByte(client_fd, 0x39);
+
+  writeByte(client_fd, flags);
+  writeFloat(client_fd, 0.05f);
+  writeFloat(client_fd, 0.1f);
+
+}
+
+// S->C Update Time
+int sc_updateTime (int client_fd, uint64_t ticks) {
+
+  writeVarInt(client_fd, sizeVarInt(0x6A) + 17);
+  writeVarInt(client_fd, 0x6A);
+
+  writeUint64(client_fd, ticks);
+  writeUint64(client_fd, ticks);
+  writeByte(client_fd, true);
+
+}
+
 // S->C Game Event 13 (Start waiting for level chunks)
 int sc_startWaitingForChunks (int client_fd) {
   writeVarInt(client_fd, 6);

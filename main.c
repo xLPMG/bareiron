@@ -16,6 +16,8 @@
 #include "src/packets.h"
 #include "src/worldgen.h"
 
+uint64_t world_time = 0;
+
 void handlePacket (int client_fd, int length, int packet_id) {
 
   int state = getClientState(client_fd);
@@ -78,6 +80,9 @@ void handlePacket (int client_fd, int length, int packet_id) {
           sc_setContainerSlot(client_fd, 0, serverSlotToClientSlot(i), player->inventory_count[i], player->inventory_items[i]);
         }
         sc_setHeldItem(client_fd, player->hotbar);
+
+        sc_playerAbilities(client_fd, 0x01 + 0x04); // invulnerability + flight
+        sc_updateTime(client_fd, world_time);
 
         short _x = player->x / 16, _z = player->z / 16;
         sc_setDefaultSpawnPosition(client_fd, 8, 80, 8);
@@ -275,6 +280,7 @@ int main () {
         clock_gettime(CLOCK_REALTIME, &time_now);
         if (time_now.tv_sec - keepalive_last.tv_sec > 10) {
           sc_keepAlive(client_fd);
+          sc_updateTime(client_fd, world_time += 200);
           clock_gettime(CLOCK_REALTIME, &keepalive_last);
         }
       }

@@ -19,6 +19,8 @@ int sc_loginPlay (int client_fd);
 int sc_synchronizePlayerPosition (int client_fd, double x, double y, double z, float yaw, float pitch);
 int sc_setDefaultSpawnPosition (int client_fd, long x, long y, long z);
 int sc_startWaitingForChunks (int client_fd);
+int sc_playerAbilities (int client_fd, uint8_t flags);
+int sc_updateTime (int client_fd, uint64_t ticks);
 int sc_setCenterChunk (int client_fd, int x, int y);
 int sc_chunkDataAndUpdateLight (int client_fd, int _x, int _z);
 int sc_keepAlive (int client_fd);
