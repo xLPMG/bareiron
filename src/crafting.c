@@ -112,6 +112,42 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
           }
           break;
 
+        case I_cobblestone:
+          if (
+            first == 0 &&
+            player->craft_items[first + 1] == I_cobblestone &&
+            player->craft_items[first + 2] == I_cobblestone &&
+            player->craft_items[first + 4] == I_stick &&
+            player->craft_items[first + 7] == I_stick
+          ) {
+            *item = I_stone_pickaxe;
+            *count = 1;
+            return;
+          }
+          if (
+            first < 2 &&
+            player->craft_items[first + 1] == I_cobblestone &&
+            player->craft_items[first + 3] == I_cobblestone &&
+            player->craft_items[first + 4] == I_stick &&
+            player->craft_items[first + 7] == I_stick
+          ) {
+            *item = I_stone_axe;
+            *count = 1;
+            return;
+          }
+          if (
+            first < 2 &&
+            player->craft_items[first + 1] == I_cobblestone &&
+            player->craft_items[first + 4] == I_cobblestone &&
+            player->craft_items[first + 3] == I_stick &&
+            player->craft_items[first + 6] == I_stick
+          ) {
+            *item = I_stone_axe;
+            *count = 1;
+            return;
+          }
+          break;
+
         default: break;
       }
 
