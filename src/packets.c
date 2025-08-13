@@ -310,7 +310,7 @@ int sc_chunkDataAndUpdateLight (int client_fd, int _x, int _z) {
     }
     // biome data
     writeByte(client_fd, 0); // bits per entry
-    writeByte(client_fd, W_forest); // palette
+    writeByte(client_fd, W_plains); // palette
   }
 
   writeVarInt(client_fd, 0); // omit block entities

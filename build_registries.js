@@ -203,8 +203,11 @@ const requiredRegistries = [
   "pig_variant",
   "wolf_sound_variant",
   "wolf_variant",
-  "damage_type",
-  "worldgen/biome"
+  "damage_type"
+];
+
+const biomes = [
+  "plains"
 ];
 
 async function convert () {
@@ -221,8 +224,17 @@ async function convert () {
       console.error(`Missing required registry "${registry}"!`);
       return;
     }
-    registryBuffers.push(serializeRegistry(registry, registries[registry]));
+    if (registry.endsWith("variant")) {
+      // The mob "variants" only require one valid variant to be accepted
+      // Send the shortest one to save memory
+      const shortest = registries[registry].sort((a, b) => a.length - b.length)[0];
+      registryBuffers.push(serializeRegistry(registry, [shortest]));
+    } else {
+      registryBuffers.push(serializeRegistry(registry, registries[registry]));
+    }
   }
+  // Send biomes separately - only "plains" is actually required
+  registryBuffers.push(serializeRegistry("worldgen/biome", biomes));
   const fullRegistryBuffer = Buffer.concat(registryBuffers);
 
   const itemsAndBlocks = await extractItemsAndBlocks();
@@ -296,7 +308,7 @@ ${Object.keys(itemsAndBlocks.palette).map((c, i) => `#define B_${c} ${i}`).join(
 ${Object.entries(itemsAndBlocks.items).map(c => `#define I_${c[0]} ${c[1]}`).join("\n")}
 
 // Biome identifiers
-${registries["worldgen/biome"].map((c, i) => `#define W_${c} ${i}`).join("\n")}
+${biomes.map((c, i) => `#define W_${c} ${i}`).join("\n")}
 
 #endif
 `;
