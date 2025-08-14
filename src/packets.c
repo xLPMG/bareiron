@@ -2,8 +2,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <arpa/inet.h>
-#include <unistd.h>
+#ifdef ESP_PLATFORM
+  #include "lwip/sockets.h"
+  #include "lwip/netdb.h"
+  #include "esp_task_wdt.h"
+#else
+  #include <arpa/inet.h>
+  #include <unistd.h>
+#endif
 
 #include "globals.h"
 #include "tools.h"
@@ -16,7 +22,7 @@
 int cs_handshake (int client_fd) {
   printf("Received Handshake:\n");
 
-  printf("  Protocol version: %d\n", readVarInt(client_fd));
+  printf("  Protocol version: %d\n", (int)readVarInt(client_fd));
   readString(client_fd);
   if (recv_count == -1) return 1;
   printf("  Server address: %s\n", recv_buffer);
@@ -75,23 +81,23 @@ int cs_clientInformation (int client_fd) {
   printf("  Chat mode: %d\n", tmp);
   tmp = readByte(client_fd);
   if (recv_count == -1) return 1;
-  if (tmp) printf("  Chat colors: on\n", tmp);
-  else printf("  Chat colors: off\n", tmp);
+  if (tmp) printf("  Chat colors: on\n");
+  else printf("  Chat colors: off\n");
   tmp = readByte(client_fd);
   if (recv_count == -1) return 1;
   printf("  Skin parts: %d\n", tmp);
   tmp = readVarInt(client_fd);
   if (recv_count == -1) return 1;
-  if (tmp) printf("  Main hand: right\n", tmp);
-  else printf("  Main hand: left\n", tmp);
+  if (tmp) printf("  Main hand: right\n");
+  else printf("  Main hand: left\n");
   tmp = readByte(client_fd);
   if (recv_count == -1) return 1;
-  if (tmp) printf("  Text filtering: on\n", tmp);
-  else printf("  Text filtering: off\n", tmp);
+  if (tmp) printf("  Text filtering: on\n");
+  else printf("  Text filtering: off\n");
   tmp = readByte(client_fd);
   if (recv_count == -1) return 1;
-  if (tmp) printf("  Allow listing: on\n", tmp);
-  else printf("  Allow listing: off\n", tmp);
+  if (tmp) printf("  Allow listing: on\n");
+  else printf("  Allow listing: off\n");
   tmp = readVarInt(client_fd);
   if (recv_count == -1) return 1;
   printf("  Particles: %d\n\n", tmp);
@@ -118,7 +124,7 @@ int cs_pluginMessage (int client_fd) {
   readString(client_fd);
   if (recv_count == -1) return 1;
   printf("  Channel: \"%s\"\n", recv_buffer);
-  if (strcmp(recv_buffer, "minecraft:brand") == 0) {
+  if (strcmp((char *)recv_buffer, "minecraft:brand") == 0) {
     readString(client_fd);
     if (recv_count == -1) return 1;
     printf("  Brand: \"%s\"\n", recv_buffer);
@@ -228,6 +234,7 @@ int sc_setDefaultSpawnPosition (int client_fd, long x, long y, long z) {
   writeUint64(client_fd, ((x & 0x3FFFFFF) << 38) | ((z & 0x3FFFFFF) << 12) | (y & 0xFFF));
   writeFloat(client_fd, 0);
 
+  return 0;
 }
 
 // S->C Player Abilities (clientbound)
@@ -240,6 +247,7 @@ int sc_playerAbilities (int client_fd, uint8_t flags) {
   writeFloat(client_fd, 0.05f);
   writeFloat(client_fd, 0.1f);
 
+  return 0;
 }
 
 // S->C Update Time
@@ -252,6 +260,7 @@ int sc_updateTime (int client_fd, uint64_t ticks) {
   writeUint64(client_fd, ticks);
   writeByte(client_fd, true);
 
+  return 0;
 }
 
 // S->C Game Event 13 (Start waiting for level chunks)
@@ -311,6 +320,8 @@ int sc_chunkDataAndUpdateLight (int client_fd, int _x, int _z) {
     // biome data
     writeByte(client_fd, 0); // bits per entry
     writeByte(client_fd, W_plains); // palette
+    // reset watchdog and yield
+    wdt_reset();
   }
 
   writeVarInt(client_fd, 0); // omit block entities
@@ -336,6 +347,7 @@ int sc_keepAlive (int client_fd) {
 
   writeUint64(client_fd, 0);
 
+  return 0;
 }
 
 // S->C Set Container Slot
@@ -386,7 +398,7 @@ int cs_playerAction (int client_fd) {
     // block was mined in survival
 
     uint8_t block = getBlockAt(x, y, z);
-    uint16_t tmp, item = getMiningResult(client_fd, block);
+    uint16_t item = getMiningResult(client_fd, block);
 
     makeBlockChange(x, y, z, 0);
 
@@ -411,6 +423,7 @@ int sc_openScreen (int client_fd, uint8_t window, const char *title, uint16_t le
   writeUint16(client_fd, length); // string length
   send(client_fd, title, length, 0);
 
+  return 0;
 }
 
 // C->S Use Item On

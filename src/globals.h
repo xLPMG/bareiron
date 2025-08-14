@@ -4,6 +4,14 @@
 #include <stdint.h>
 #include <unistd.h>
 
+#ifdef ESP_PLATFORM
+  #define wdt_reset();    \
+    esp_task_wdt_reset(); \
+    vTaskDelay(1);
+#else
+  #define wdt_reset();
+#endif
+
 #define true 1
 #define false 0
 

@@ -7,8 +7,14 @@
 #define CLOCK_REALTIME 0
 #endif
 
-#include <arpa/inet.h>
-#include <unistd.h>
+#ifdef ESP_PLATFORM
+  #include "lwip/sockets.h"
+  #include "lwip/netdb.h"
+  #include "esp_task_wdt.h"
+#else
+  #include <arpa/inet.h>
+  #include <unistd.h>
+#endif
 
 #include "src/globals.h"
 #include "src/tools.h"
@@ -30,8 +36,8 @@ void handlePacket (int client_fd, int length, int packet_id) {
         return;
       } else if (state == STATE_LOGIN) {
         if (cs_loginStart(client_fd)) break;
-        if (reservePlayerData(client_fd, recv_buffer + 17)) break;
-        if (sc_loginSuccess(client_fd, recv_buffer, recv_buffer + 17)) break;
+        if (reservePlayerData(client_fd, (char *)(recv_buffer + 17))) break;
+        if (sc_loginSuccess(client_fd, (char *)recv_buffer, (char *)(recv_buffer + 17))) break;
         return;
       } else if (state == STATE_CONFIGURATION) {
         if (cs_clientInformation(client_fd)) break;
@@ -216,6 +222,10 @@ void handlePacket (int client_fd, int length, int packet_id) {
 
 int main () {
 
+  #ifdef ESP_PLATFORM
+    esp_task_wdt_add(NULL);
+  #endif
+
   for (int i = 0; i < sizeof(block_changes) / sizeof(BlockChange); i ++) {
     block_changes[i].block = 0xFF;
   }
@@ -300,6 +310,7 @@ int main () {
       handlePacket(client_fd, length - sizeVarInt(packet_id), packet_id);
       if (recv_count == -1) break;
 
+      wdt_reset();
     }
 
     setClientState(client_fd, STATE_NONE);
@@ -308,11 +319,16 @@ int main () {
     close(client_fd);
     printf("Connection closed.\n");
 
+    wdt_reset();
   }
 
   close(server_fd);
   printf("Server closed.\n");
 
-  return 0;
+  #ifdef ESP_PLATFORM
+    vTaskDelete(NULL);
+  #else
+    return 0;
+  #endif
 
 }

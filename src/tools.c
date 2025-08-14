@@ -1,8 +1,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <arpa/inet.h>
-#include <unistd.h>
+
+#ifdef ESP_PLATFORM
+  #include "lwip/sockets.h"
+  #include "lwip/netdb.h"
+#else
+  #include <arpa/inet.h>
+  #include <unistd.h>
+#endif
 
 #include "globals.h"
 #include "registries.h"
@@ -292,7 +298,6 @@ uint16_t getMiningResult (int client_fd, uint8_t block) {
 
     case B_oak_leaves:
       uint32_t r = fast_rand();
-      printf("fast_rand: %u, in distribution: %.3f\n", r, (float)r / (4294967295.0f));
       if (r < 21474836) return I_apple; // 0.5%
       if (r < 85899345) return I_stick; // 2%
       if (r < 214748364) return I_oak_sapling; // 5%
