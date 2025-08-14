@@ -284,10 +284,7 @@ int sc_setCenterChunk (int client_fd, int x, int y) {
 // S->C Chunk Data and Update Light
 int sc_chunkDataAndUpdateLight (int client_fd, int _x, int _z) {
 
-  int palette_size = 0;
-  for (int i = 0; i < 256; i ++) palette_size += sizeVarInt(block_palette[i]);
-
-  const int chunk_data_size = (4101 + sizeVarInt(256) + palette_size) * 24;
+  const int chunk_data_size = (4101 + sizeVarInt(256) + sizeof(network_block_palette)) * 24;
 
   writeVarInt(client_fd, 17 + sizeVarInt(chunk_data_size) + chunk_data_size);
   writeByte(client_fd, 0x27);
@@ -306,13 +303,15 @@ int sc_chunkDataAndUpdateLight (int client_fd, int _x, int _z) {
     y = i * 16 - 64;
     writeUint16(client_fd, 4096); // block count
     writeByte(client_fd, 8); // bits per entry
-    writeVarInt(client_fd, 256);
-    for (int j = 0; j < 256; j ++) writeVarInt(client_fd, block_palette[j]);
+    writeVarInt(client_fd, 256); // block palette length
+    // block palette as varint buffer
+    send(client_fd, network_block_palette, sizeof(network_block_palette), 0);
+    // chunk section buffer
     buildChunkSection(x, y, z);
     send(client_fd, chunk_section, 4096, 0);
     // biome data
     writeByte(client_fd, 0); // bits per entry
-    writeByte(client_fd, W_plains); // palette
+    writeByte(client_fd, W_plains); // biome palette
     // reset watchdog and yield
     wdt_reset();
   }

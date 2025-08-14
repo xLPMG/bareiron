@@ -194,6 +194,14 @@ function serializeTags (tags) {
   return Buffer.concat([lengthBuf, fullData]);
 }
 
+function toVarIntBuffer (array) {
+  const parts = [];
+  for (const num of array) {
+    parts.push(writeVarInt(num));
+  }
+  return Buffer.concat(parts);
+}
+
 // Convert to C-style hex byte array string
 function toCArray (buffer) {
   const hexBytes = [...buffer].map(b => `0x${b.toString(16).padStart(2, "0")}`);
@@ -267,6 +275,8 @@ async function convert () {
     }
   });
 
+  const networkBlockPalette = toVarIntBuffer(Object.values(itemsAndBlocks.palette));
+
   const sourceCode = `\
 #include <stdint.h>
 #include "registries.h"
@@ -282,6 +292,11 @@ ${toCArray(tagBuffer)}
 
 // Block palette
 uint16_t block_palette[] = { ${Object.values(itemsAndBlocks.palette).join(", ")} };
+// Block palette as VarInt buffer
+uint8_t network_block_palette[] = {
+${toCArray(networkBlockPalette)}
+};
+
 // Block-to-item mapping
 uint16_t B_to_I[] = { ${itemsAndBlocks.mappingWithOverrides.join(", ")} };
 // Item-to-block mapping
@@ -305,6 +320,7 @@ extern uint8_t registries_bin[${fullRegistryBuffer.length}];
 extern uint8_t tags_bin[${tagBuffer.length}];
 
 extern uint16_t block_palette[256]; // Block palette
+extern uint8_t network_block_palette[${networkBlockPalette.length}]; // Block palette as VarInt buffer
 extern uint16_t B_to_I[256]; // Block-to-item mapping
 uint8_t I_to_B (uint16_t item); // Item-to-block mapping
 
