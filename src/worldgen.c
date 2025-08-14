@@ -73,10 +73,7 @@ int getHeightAt (int rx, int rz, int _x, int _z, uint32_t chunk_hash) {
 
 }
 
-uint8_t getBlockAt (int x, int y, int z) {
-
-  uint8_t block_change = getBlockChange(x, y, z);
-  if (block_change != 0xFF) return block_change;
+uint8_t getTerrainAt (int x, int y, int z) {
 
   if (y > 80) return B_air;
 
@@ -142,21 +139,55 @@ skip_tree:
 
 }
 
+uint8_t getBlockAt (int x, int y, int z) {
+
+  uint8_t block_change = getBlockChange(x, y, z);
+  if (block_change != 0xFF) return block_change;
+
+  return getTerrainAt(x, y, z);
+
+}
+
 uint8_t chunk_section[4096];
 
 void buildChunkSection (int cx, int cy, int cz) {
 
+  // Generate 4096 blocks in one buffer to reduce overhead
   for (int j = 0; j < 4096; j += 8) {
-
+    // These values don't change in the lower array,
+    // since all of the operations are on multiples of 8
     int y = j / 256 + cy;
     int z = j / 16 % 16 + cz;
-
+    // The client expects "big-endian longs", which in our
+    // case means reversing the order in which we store/send
+    // each 8 block sequence.
     for (int offset = 7; offset >= 0; offset--) {
       int k = j + offset;
       int x = k % 16 + cx;
-      chunk_section[j + 7 - offset] = getBlockAt(x, y, z);
+      chunk_section[j + 7 - offset] = getTerrainAt(x, y, z);
     }
+  }
 
+  // Apply block changes on top of terrain
+  // This does mean that we're generating some terrain only to replace it,
+  // but it's better to apply changes in one run rather than in individual
+  // runs per block, as this is more expensive than terrain generation.
+  for (int i = 0; i < block_changes_count; i ++) {
+    if (block_changes[i].block == 0xFF) continue;
+    if ( // Check if block is within this chunk section
+      block_changes[i].x >= cx && block_changes[i].x < cx + 16 &&
+      block_changes[i].y >= cy && block_changes[i].y < cy + 16 &&
+      block_changes[i].z >= cz && block_changes[i].z < cz + 16
+    ) {
+      int dx = block_changes[i].x - cx;
+      int dy = block_changes[i].y - cy;
+      int dz = block_changes[i].z - cz;
+      // Same 8-block sequence reversal as before, this time 10x dirtier
+      // because we're working with specific indexes.
+      unsigned address = (unsigned)(dx + (dz << 4) + (dy << 8));
+      unsigned index = (address & ~7u) | (7u - (address & 7u));
+      chunk_section[index] = block_changes[i].block;
+    }
   }
 
 }

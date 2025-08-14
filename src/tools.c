@@ -256,7 +256,6 @@ int givePlayerItem (int client_fd, uint16_t item) {
 }
 
 uint8_t getBlockChange (short x, short y, short z) {
-  short tmp;
   for (int i = 0; i < block_changes_count; i ++) {
     if (block_changes[i].block == 0xFF) continue;
     if (
@@ -270,7 +269,6 @@ uint8_t getBlockChange (short x, short y, short z) {
 
 void makeBlockChange (short x, short y, short z, uint8_t block) {
 
-  short tmp;
   for (int i = 0; i < block_changes_count; i ++) {
     if (
       block_changes[i].x == x &&
