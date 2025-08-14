@@ -308,15 +308,8 @@ int sc_chunkDataAndUpdateLight (int client_fd, int _x, int _z) {
     writeByte(client_fd, 8); // bits per entry
     writeVarInt(client_fd, 256);
     for (int j = 0; j < 256; j ++) writeVarInt(client_fd, block_palette[j]);
-    for (int j = 0; j < 4096; j += 8) {
-      for (int k = j + 7; k >= j; k --) {
-        writeByte(client_fd, getBlockAt(
-          k % 16 + x,
-          k / 256 + y,
-          k / 16 % 16 + z
-        ));
-      }
-    }
+    buildChunkSection(x, y, z);
+    send(client_fd, chunk_section, 4096, 0);
     // biome data
     writeByte(client_fd, 0); // bits per entry
     writeByte(client_fd, W_plains); // palette

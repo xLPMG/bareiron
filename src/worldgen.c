@@ -141,3 +141,22 @@ skip_tree:
   return B_air;
 
 }
+
+uint8_t chunk_section[4096];
+
+void buildChunkSection (int cx, int cy, int cz) {
+
+  for (int j = 0; j < 4096; j += 8) {
+
+    int y = j / 256 + cy;
+    int z = j / 16 % 16 + cz;
+
+    for (int offset = 7; offset >= 0; offset--) {
+      int k = j + offset;
+      int x = k % 16 + cx;
+      chunk_section[j + 7 - offset] = getBlockAt(x, y, z);
+    }
+
+  }
+
+}
