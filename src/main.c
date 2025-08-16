@@ -8,9 +8,13 @@
 #endif
 
 #ifdef ESP_PLATFORM
+  #include "freertos/FreeRTOS.h"
+  #include "freertos/task.h"
+  #include "esp_wifi.h"
+  #include "esp_event.h"
+  #include "esp_task_wdt.h"
   #include "lwip/sockets.h"
   #include "lwip/netdb.h"
-  #include "esp_task_wdt.h"
 #else
   #include <arpa/inet.h>
   #include <unistd.h>
@@ -21,6 +25,7 @@
 #include "src/varnum.h"
 #include "src/packets.h"
 #include "src/worldgen.h"
+#include "src/registries.h"
 
 uint64_t world_time = 0;
 
@@ -68,19 +73,24 @@ void handlePacket (int client_fd, int length, int packet_id) {
         PlayerData *player;
         if (getPlayerData(client_fd, &player)) break;
 
-        if (player->y == -32767) { // is this a new player?
+        float spawn_x = 8.5f, spawn_y = 80.0f, spawn_z = 8.5f;
+        float spawn_yaw = 0.0f, spawn_pitch = 0.0f;
 
+        if (player->y == -32767) { // is this a new player?
           int _x = 8 / chunk_size;
           int _z = 8 / chunk_size;
           int rx = 8 % chunk_size;
           int rz = 8 % chunk_size;
-
-          uint32_t chunk_hash = getChunkHash(_x, _z);
-          sc_synchronizePlayerPosition(client_fd, 8.5, getHeightAt(rx, rz, _x, _z, chunk_hash) + 1, 8.5, 0, 0);
-
+          spawn_y = getHeightAt(rx, rz, _x, _z, getChunkHash(_x, _z)) + 1;
         } else {
-          sc_synchronizePlayerPosition(client_fd, player->x, player->y, player->z, player->yaw * 180 / 127, player->pitch * 90 / 127);
+          spawn_x = player->x > 0 ? (float)player->x + 0.5 : (float)player->x - 0.5;
+          spawn_y = player->y;
+          spawn_z = player->z > 0 ? (float)player->z + 0.5 : (float)player->z - 0.5;
+          spawn_yaw = player->yaw * 180 / 127;
+          spawn_pitch = player->pitch * 90 / 127;
         }
+
+        sc_synchronizePlayerPosition(client_fd, spawn_x, spawn_y, spawn_z, spawn_yaw, spawn_pitch);
 
         for (uint8_t i = 0; i < 41; i ++) {
           sc_setContainerSlot(client_fd, 0, serverSlotToClientSlot(i), player->inventory_count[i], player->inventory_items[i]);
@@ -91,15 +101,23 @@ void handlePacket (int client_fd, int length, int packet_id) {
         sc_updateTime(client_fd, world_time);
 
         short _x = player->x / 16, _z = player->z / 16;
+        if (player->x % 16 < 0) _x -= 1;
+        if (player->z % 16 < 0) _z -= 1;
+
         sc_setDefaultSpawnPosition(client_fd, 8, 80, 8);
         sc_startWaitingForChunks(client_fd);
         sc_setCenterChunk(client_fd, _x, _z);
 
+        // Send spawn chunk first
+        sc_chunkDataAndUpdateLight(client_fd, _x, _z);
         for (int i = -2; i <= 2; i ++) {
           for (int j = -2; j <= 2; j ++) {
+            if (i == 0 && j == 0) continue;
             sc_chunkDataAndUpdateLight(client_fd, _x + i, _z + j);
           }
         }
+        // Re-synchronize player position after all chunks have been sent
+        sc_synchronizePlayerPosition(client_fd, spawn_x, spawn_y, spawn_z, spawn_yaw, spawn_pitch);
 
         return;
       }
@@ -136,7 +154,7 @@ void handlePacket (int client_fd, int length, int packet_id) {
 
         if (packet_id == 0x1D) cs_setPlayerPosition(client_fd, &x, &y, &z);
         else cs_setPlayerPositionAndRotation(client_fd, &x, &y, &z, &yaw, &pitch);
-        short cx = x + 0.5, cy = y, cz = z + 0.5;
+        short cx = x, cy = y, cz = z;
 
         PlayerData *player;
         if (getPlayerData(client_fd, &player)) break;
@@ -332,3 +350,46 @@ int main () {
   #endif
 
 }
+
+#ifdef ESP_PLATFORM
+
+static void wifi_event_handler (void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
+  if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+    esp_wifi_connect();
+  } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+    esp_wifi_connect();
+  } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+    printf("Got IP, starting server...\n\n");
+    xTaskCreate(main, "bareiron", 4096, NULL, 5, NULL);
+  }
+}
+
+void wifi_init () {
+  esp_netif_init();
+  esp_event_loop_create_default();
+  esp_netif_create_default_wifi_sta();
+
+  wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+  esp_wifi_init(&cfg);
+
+  esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL, NULL);
+  esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL, NULL);
+
+  wifi_config_t wifi_config = {
+    .sta = {
+      .ssid = WIFI_SSID,
+      .password = WIFI_PASS,
+      .threshold.authmode = WIFI_AUTH_WPA2_PSK
+    }
+  };
+
+  esp_wifi_set_mode(WIFI_MODE_STA);
+  esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
+  esp_wifi_start();
+}
+
+void app_main () {
+  wifi_init();
+}
+
+#endif
