@@ -467,6 +467,9 @@ int cs_useItemOn (int client_fd) {
   if (target == B_crafting_table) {
     sc_openScreen(client_fd, 12, "Crafting", 8);
     return 0;
+  } else if (target == B_furnace) {
+    sc_openScreen(client_fd, 14, "Furnace", 7);
+    return 0;
   }
 
   PlayerData *player;
@@ -527,7 +530,7 @@ int cs_clickContainer (int client_fd) {
     if (!readByte(client_fd)) { // no item?
       if (slot != 255) {
         player->inventory_items[slot] = 0;
-        if (slot <= 40) player->inventory_count[slot] = 0;
+        player->inventory_count[slot] = 0;
       }
       continue;
     }
@@ -543,14 +546,30 @@ int cs_clickContainer (int client_fd) {
 
     if (count > 0) {
       player->inventory_items[slot] = item;
-      if (slot <= 40) player->inventory_count[slot] = count;
+      player->inventory_count[slot] = count;
     }
 
   }
 
-  if (craft) {
+  // window 0 is player inventory, window 12 is crafting table
+  if (craft && (window_id == 0 || window_id == 12)) {
     getCraftingOutput(player, &count, &item);
     sc_setContainerSlot(client_fd, window_id, 0, count, item);
+  } else if (window_id == 14) { // furnace
+    getSmeltingOutput(player);
+    for (int i = 0; i < 3; i ++) {
+      sc_setContainerSlot(client_fd, window_id, i, player->craft_count[i], player->craft_items[i]);
+    }
+  }
+
+  // read but ignore carried item slot (for now)
+  if (readByte(client_fd)) {
+    readVarInt(client_fd);
+    readVarInt(client_fd);
+    tmp = readVarInt(client_fd);
+    recv(client_fd, recv_buffer, tmp, MSG_WAITALL);
+    tmp = readVarInt(client_fd);
+    recv(client_fd, recv_buffer, tmp, MSG_WAITALL);
   }
 
   return 0;

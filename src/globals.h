@@ -53,6 +53,7 @@ typedef struct {
   uint16_t inventory_items[41];
   uint16_t craft_items[9];
   uint8_t inventory_count[41];
+  uint8_t craft_count[9];
 } PlayerData;
 
 #pragma pack(pop)

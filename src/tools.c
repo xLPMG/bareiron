@@ -225,6 +225,14 @@ uint8_t clientSlotToServerSlot (int window_id, uint8_t slot) {
     // the rest of the slots are identical, just shifted by one
     if (slot >= 10 && slot <= 45) return clientSlotToServerSlot(0, slot - 1);
 
+  } else if (window_id == 14) { // furnace
+
+    // move furnace items to the player's crafting grid
+    // this lets us put them back in the inventory once the window closes
+    if (slot >= 0 && slot <= 2) return 41 + slot;
+    // the rest of the slots are identical, just shifted by 6
+    if (slot >= 3 && slot <= 38) return clientSlotToServerSlot(0, slot + 6);
+
   }
 
   return 255;

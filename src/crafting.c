@@ -1,8 +1,10 @@
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "globals.h"
 #include "registries.h"
+#include "tools.h"
 #include "crafting.h"
 
 void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
@@ -171,11 +173,70 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
       }
       break;
 
+    case 8:
+      switch (first_item) {
+        case I_cobblestone:
+          if (player->craft_items[first + 4] == 0) {
+            *item = I_furnace;
+            *count = 1;
+            return;
+          }
+          break;
+
+        default: break;
+      }
+
     default: break;
 
   }
 
   *count = 0;
   *item = 0;
+
+}
+
+#define registerSmeltingRecipe(a, b) \
+  if (*material == a && (*output_item == b || *output_item == 0)) *output_item = b
+
+void getSmeltingOutput (PlayerData *player) {
+
+  uint8_t *material_count = &player->craft_count[0];
+  uint8_t *fuel_count = &player->craft_count[1];
+
+  if (*material_count == 0 || *fuel_count == 0) return;
+
+  uint16_t *material = &player->craft_items[0];
+  uint16_t *fuel = &player->craft_items[1];
+
+  uint8_t *output_count = &player->craft_count[2];
+  uint16_t *output_item = &player->craft_items[2];
+
+  uint8_t fuel_value;
+  if (*fuel == I_coal) fuel_value = 8;
+  else if (*fuel == I_charcoal) fuel_value = 8;
+  else if (*fuel == I_oak_planks) fuel_value = 1 + (fast_rand() & 1);
+  else if (*fuel == I_oak_log) fuel_value = 1 + (fast_rand() & 1);
+  else return;
+
+  uint8_t exchange = *material_count > fuel_value ? fuel_value : *material_count;
+
+  registerSmeltingRecipe(I_cobblestone, I_stone);
+  else registerSmeltingRecipe(I_oak_log, I_charcoal);
+  else registerSmeltingRecipe(I_raw_iron, I_iron_ingot);
+  else registerSmeltingRecipe(I_raw_gold, I_gold_ingot);
+  else return;
+
+  *output_count += exchange;
+  *material_count -= exchange;
+
+  *fuel_count -= 1;
+  if (*fuel_count == 0) *fuel = 0;
+
+  if (*material_count <= 0) {
+    *material_count = 0;
+    *material = 0;
+  } else return getSmeltingOutput(player);
+
+  return;
 
 }
