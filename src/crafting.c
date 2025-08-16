@@ -55,6 +55,13 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
             return;
           }
           break;
+        case I_coal:
+          if (first_row != 2 && player->craft_items[first + 3] == I_stick) {
+            *item = I_torch;
+            *count = 4;
+            return;
+          }
+          break;
 
         default: break;
       }
