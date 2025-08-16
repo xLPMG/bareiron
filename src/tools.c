@@ -303,10 +303,25 @@ uint16_t getMiningResult (int client_fd, uint8_t block) {
   if (getPlayerData(client_fd, &player)) return 0;
   uint16_t held_item = player->inventory_items[player->hotbar];
 
+  // In order to avoid storing durability data, items break randomly with
+  // the probability weighted based on vanilla durability.
+  uint32_t r = fast_rand();
+  if (
+    ((held_item == I_wooden_pickaxe || held_item == I_wooden_axe || held_item == I_wooden_shovel) && r < 72796055) ||
+    ((held_item == I_stone_pickaxe || held_item == I_stone_axe || held_item == I_stone_shovel) && r < 32786009) ||
+    ((held_item == I_iron_pickaxe || held_item == I_iron_axe || held_item == I_iron_shovel) && r < 17179869) ||
+    ((held_item == I_golden_pickaxe || held_item == I_golden_axe || held_item == I_golden_shovel) && r < 134217728) ||
+    ((held_item == I_diamond_pickaxe || held_item == I_diamond_axe || held_item == I_diamond_shovel) && r < 2751420) ||
+    ((held_item == I_netherite_pickaxe || held_item == I_netherite_axe || held_item == I_netherite_shovel) && r < 2114705)
+  ) {
+    player->inventory_items[player->hotbar] = 0;
+    player->inventory_count[player->hotbar] = 0;
+    sc_setContainerSlot(client_fd, 0, serverSlotToClientSlot(player->hotbar), 0, 0);
+  }
+
   switch (block) {
 
     case B_oak_leaves:
-      uint32_t r = fast_rand();
       if (r < 21474836) return I_apple; // 0.5%
       if (r < 85899345) return I_stick; // 2%
       if (r < 214748364) return I_oak_sapling; // 5%
