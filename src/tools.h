@@ -26,6 +26,7 @@ double readDouble (int client_fd);
 void readString (int client_fd);
 
 uint32_t fast_rand ();
+uint64_t splitmix64 (uint64_t state);
 
 extern int client_states[MAX_PLAYERS * 2];
 
