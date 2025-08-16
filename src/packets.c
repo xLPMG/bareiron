@@ -285,8 +285,9 @@ int sc_setCenterChunk (int client_fd, int x, int y) {
 int sc_chunkDataAndUpdateLight (int client_fd, int _x, int _z) {
 
   const int chunk_data_size = (4101 + sizeVarInt(256) + sizeof(network_block_palette)) * 20 + 6 * 12;
+  const int light_data_size = 14 + (sizeVarInt(2048) + 2048) * 26;
 
-  writeVarInt(client_fd, 17 + sizeVarInt(chunk_data_size) + chunk_data_size);
+  writeVarInt(client_fd, 11 + sizeVarInt(chunk_data_size) + chunk_data_size + light_data_size);
   writeByte(client_fd, 0x27);
 
   writeUint32(client_fd, _x);
@@ -341,12 +342,25 @@ int sc_chunkDataAndUpdateLight (int client_fd, int _x, int _z) {
   writeVarInt(client_fd, 0); // omit block entities
 
   // light data
-  writeVarInt(client_fd, 0);
+  writeVarInt(client_fd, 1);
+  writeUint64(client_fd, 0b11111111111111111111111111);
   writeVarInt(client_fd, 0);
   writeVarInt(client_fd, 0);
   writeVarInt(client_fd, 0);
 
-  writeVarInt(client_fd, 0);
+  // sky light array
+  writeVarInt(client_fd, 26);
+  for (int i = 0; i < 2048; i ++) chunk_section[i] = 0xFF;
+  for (int i = 2048; i < 4096; i ++) chunk_section[i] = 0;
+  for (int i = 0; i < 8; i ++) {
+    writeVarInt(client_fd, 2048);
+    send(client_fd, chunk_section + 2048, 2048, 0);
+  }
+  for (int i = 0; i < 18; i ++) {
+    writeVarInt(client_fd, 2048);
+    send(client_fd, chunk_section, 2048, 0);
+  }
+  // don't send block light
   writeVarInt(client_fd, 0);
 
   return 0;
