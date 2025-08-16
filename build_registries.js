@@ -4,7 +4,12 @@ const path = require("path");
 // Overrides for block-to-item conversion
 const blockToItemOverrides = {
   "grass_block": "dirt",
-  "stone": "cobblestone"
+  "stone": "cobblestone",
+  "diamond_ore": "diamond",
+  "gold_ore": "raw_gold",
+  "redstone_ore": "redstone",
+  "iron_ore": "raw_iron",
+  "coal_ore": "coal"
 };
 
 const biomes = [
@@ -261,7 +266,12 @@ async function convert () {
     "block": {
       "mineable/pickaxe": [
         itemsAndBlocks.blockRegistry["stone"],
-        itemsAndBlocks.blockRegistry["cobblestone"]
+        itemsAndBlocks.blockRegistry["cobblestone"],
+        itemsAndBlocks.blockRegistry["diamond_ore"],
+        itemsAndBlocks.blockRegistry["gold_ore"],
+        itemsAndBlocks.blockRegistry["redstone_ore"],
+        itemsAndBlocks.blockRegistry["iron_ore"],
+        itemsAndBlocks.blockRegistry["coal_ore"]
       ],
       "mineable/axe": [
         itemsAndBlocks.blockRegistry["oak_log"],

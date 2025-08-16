@@ -299,6 +299,10 @@ void makeBlockChange (short x, short y, short z, uint8_t block) {
 // Probability numbers obtained with this formula: N = floor(P * 32 ^ 2)
 uint16_t getMiningResult (int client_fd, uint8_t block) {
 
+  PlayerData *player;
+  if (getPlayerData(client_fd, &player)) return 0;
+  uint16_t held_item = player->inventory_items[player->hotbar];
+
   switch (block) {
 
     case B_oak_leaves:
@@ -311,13 +315,24 @@ uint16_t getMiningResult (int client_fd, uint8_t block) {
 
     case B_stone:
     case B_cobblestone:
-      // Check if player is holding a pickaxe
-      PlayerData *player;
-      if (getPlayerData(client_fd, &player)) return 0;
-      uint16_t held_item = player->inventory_items[player->hotbar];
+    case B_coal_ore:
+    case B_iron_ore:
+      // Check if player is holding (any) pickaxe
       if (
         held_item != I_wooden_pickaxe &&
         held_item != I_stone_pickaxe &&
+        held_item != I_iron_pickaxe &&
+        held_item != I_golden_pickaxe &&
+        held_item != I_diamond_pickaxe &&
+        held_item != I_netherite_pickaxe
+      ) return 0;
+      break;
+
+    case B_gold_ore:
+    case B_redstone_ore:
+    case B_diamond_ore:
+      // Check if player is holding an iron (or better) pickaxe
+      if (
         held_item != I_iron_pickaxe &&
         held_item != I_golden_pickaxe &&
         held_item != I_diamond_pickaxe &&
