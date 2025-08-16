@@ -195,7 +195,7 @@ void clearPlayerFD (int client_fd) {
 }
 
 uint8_t serverSlotToClientSlot (uint8_t slot) {
-  if (slot >= 0 && slot <= 9) return slot + 36;
+  if (slot >= 0 && slot < 9) return slot + 36;
   if (slot >= 9 && slot <= 35) return slot;
   if (slot == 40) return 45;
   if (slot >= 36 && slot <= 39) return 3 - (slot - 36) + 5;
@@ -245,7 +245,7 @@ int givePlayerItem (int client_fd, uint16_t item) {
 
   if (slot == 255) {
     for (int i = 0; i < 41; i ++) {
-      if (player->inventory_items[i] == 0 && player->inventory_count[i] == 0) {
+      if (player->inventory_count[i] == 0) {
         slot = i;
         break;
       }
