@@ -141,7 +141,7 @@ skip_tree:
     if (y == ore_y) {
       // Since the ore Y coordinate is effectely a random number in range [0;64],
       // we use it in another bit shift to get a pseudo-random number for the column
-      uint8_t ore_probability = (anchor.hash >> ore_y) & 127;
+      uint8_t ore_probability = (anchor.hash >> ore_y) & 255;
       // Ore placement is determined by Y level and "probability"
       if (y < 15 && ore_probability < 15) return B_diamond_ore;
       if (y < 30) {
