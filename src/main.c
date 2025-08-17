@@ -240,10 +240,6 @@ void handlePacket (int client_fd, int length, int packet_id) {
 
 int main () {
 
-  #ifdef ESP_PLATFORM
-    esp_task_wdt_add(NULL);
-  #endif
-
   for (int i = 0; i < sizeof(block_changes) / sizeof(BlockChange); i ++) {
     block_changes[i].block = 0xFF;
   }
@@ -342,15 +338,15 @@ int main () {
   close(server_fd);
   printf("Server closed.\n");
 
-  #ifdef ESP_PLATFORM
-    vTaskDelete(NULL);
-  #else
-    return 0;
-  #endif
-
 }
 
 #ifdef ESP_PLATFORM
+
+void bareiron_main (void *pvParameters) {
+  esp_task_wdt_add(NULL);
+  main();
+  vTaskDelete(NULL);
+}
 
 static void wifi_event_handler (void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
   if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
@@ -359,7 +355,7 @@ static void wifi_event_handler (void *arg, esp_event_base_t event_base, int32_t 
     esp_wifi_connect();
   } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
     printf("Got IP, starting server...\n\n");
-    xTaskCreate(main, "bareiron", 4096, NULL, 5, NULL);
+    xTaskCreate(bareiron_main, "bareiron", 4096, NULL, 5, NULL);
   }
 }
 
