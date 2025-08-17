@@ -78,10 +78,10 @@ void handlePacket (int client_fd, int length, int packet_id) {
         float spawn_yaw = 0.0f, spawn_pitch = 0.0f;
 
         if (player->y == -32767) { // is this a new player?
-          int _x = 8 / chunk_size;
-          int _z = 8 / chunk_size;
-          int rx = 8 % chunk_size;
-          int rz = 8 % chunk_size;
+          int _x = 8 / CHUNK_SIZE;
+          int _z = 8 / CHUNK_SIZE;
+          int rx = 8 % CHUNK_SIZE;
+          int rz = 8 % CHUNK_SIZE;
           spawn_y = getHeightAt(rx, rz, _x, _z, getChunkHash(_x, _z)) + 1;
         } else {
           spawn_x = player->x > 0 ? (float)player->x + 0.5 : (float)player->x - 0.5;

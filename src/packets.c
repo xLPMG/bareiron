@@ -405,6 +405,14 @@ int sc_setContainerSlot (int client_fd, int window_id, uint16_t slot, uint8_t co
 
 }
 
+// S->C Block Update
+int sc_blockUpdate (int client_fd, int64_t x, int64_t y, int64_t z, uint8_t block) {
+  writeVarInt(client_fd, 9 + sizeVarInt(block_palette[block]));
+  writeByte(client_fd, 0x08);
+  writeUint64(client_fd, ((x & 0x3FFFFFF) << 38) | ((z & 0x3FFFFFF) << 12) | (y & 0xFFF));
+  writeVarInt(client_fd, block_palette[block]);
+}
+
 // C->S Player Action
 int cs_playerAction (int client_fd) {
 
@@ -490,31 +498,37 @@ int cs_useItemOn (int client_fd) {
     return 0;
   }
 
+  switch (face) {
+    case 0: y -= 1; break;
+    case 1: y += 1; break;
+    case 2: z -= 1; break;
+    case 3: z += 1; break;
+    case 4: x -= 1; break;
+    case 5: x += 1; break;
+    default: break;
+  }
+
   PlayerData *player;
   if (getPlayerData(client_fd, &player)) return 1;
 
-  uint16_t item = player->inventory_items[player->hotbar];
-  uint8_t block = I_to_B(item);
+  // check if the player is in the way
+  if (x == player->x && (y == player->y || y == player->y + 1) && z == player->z) return 0;
+
+  uint16_t *item = &player->inventory_items[player->hotbar];
+  uint8_t *count = &player->inventory_count[player->hotbar];
+  uint8_t block = I_to_B(*item);
 
   // if the selected item doesn't correspond to a block, exit
   if (block == 0) return 0;
   // if the selected slot doesn't hold any items, exit
-  if (player->inventory_count[player->hotbar] == 0) return 0;
+  if (*count == 0) return 0;
   // decrease item amount in selected slot
-  player->inventory_count[player->hotbar] --;
+  *count -= 1;
   // clear item id in slot if amount is zero
-  if (player->inventory_count[player->hotbar] == 0)
-    player->inventory_items[player->hotbar] = 0;
+  if (*count == 0) *item = 0;
 
-  switch (face) {
-    case 0: makeBlockChange(x, y - 1, z, block); break;
-    case 1: makeBlockChange(x, y + 1, z, block); break;
-    case 2: makeBlockChange(x, y, z - 1, block); break;
-    case 3: makeBlockChange(x, y, z + 1, block); break;
-    case 4: makeBlockChange(x - 1, y, z, block); break;
-    case 5: makeBlockChange(x + 1, y, z, block); break;
-    default: break;
-  }
+  makeBlockChange(x, y, z, block);
+  sc_setContainerSlot(client_fd, 0, serverSlotToClientSlot(0, player->hotbar), *count, *item);
 
   return 0;
 

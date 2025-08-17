@@ -14,6 +14,7 @@
 #include "registries.h"
 #include "varnum.h"
 #include "packets.h"
+#include "worldgen.h"
 #include "tools.h"
 
 static uint64_t htonll (uint64_t value) {
@@ -298,16 +299,46 @@ uint8_t getBlockChange (short x, short y, short z) {
 
 void makeBlockChange (short x, short y, short z, uint8_t block) {
 
+  // Transmit block update to all managed clients
+  for (int i = 0; i < MAX_PLAYERS; i ++) {
+    sc_blockUpdate(player_data[i].client_fd, x, y, z, block);
+  }
+
+  // Calculate terrain at these coordinates and compare it to the input block.
+  // Since block changes get overlayed on top of terrain, we don't want to
+  // store blocks that don't differ from the base terrain.
+  ChunkAnchor anchor = {
+    x / CHUNK_SIZE,
+    z / CHUNK_SIZE
+  };
+  if (x % CHUNK_SIZE < 0) anchor.x --;
+  if (z % CHUNK_SIZE < 0) anchor.z --;
+  anchor.hash = getChunkHash(anchor.x, anchor.z);
+  uint8_t is_base_block = block == getTerrainAt(x, y, z, anchor);
+
+  // Look for existing block change entries and replace them
+  // 0xFF indicates a missing/restored entry
   for (int i = 0; i < block_changes_count; i ++) {
+    if (block_changes[i].block == 0xFF && !is_base_block) {
+      block_changes[i].x = x;
+      block_changes[i].y = y;
+      block_changes[i].z = z;
+      block_changes[i].block = block;
+      return;
+    }
     if (
       block_changes[i].x == x &&
       block_changes[i].y == y &&
       block_changes[i].z == z
     ) {
-      block_changes[i].block = block;
+      if (is_base_block) block_changes[i].block = 0xFF;
+      else block_changes[i].block = block;
       return;
     }
   }
+
+  // Don't create a new entry if it contains the base terrain block
+  if (is_base_block) return;
 
   block_changes[block_changes_count].x = x;
   block_changes[block_changes_count].y = y;

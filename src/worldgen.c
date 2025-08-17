@@ -25,7 +25,7 @@ int getCornerHeight (uint32_t hash) {
   // Use parts of the hash as random values for the height variation.
   // We stack multiple different numbers to stabilize the distribution
   // while allowing for occasional variances.
-  int height = terrain_base_height + (
+  int height = TERRAIN_BASE_HEIGHT + (
     (hash & 3) +
     (hash >> 4 & 3) +
     (hash >> 8 & 3) +
@@ -41,9 +41,9 @@ int getCornerHeight (uint32_t hash) {
 }
 
 int interpolate (int a, int b, int c, int d, int x, int z) {
-  int top    = a * (chunk_size - x) + b * x;
-  int bottom = c * (chunk_size - x) + d * x;
-  return (top * (chunk_size - z) + bottom * z) / (chunk_size * chunk_size);
+  int top    = a * (CHUNK_SIZE - x) + b * x;
+  int bottom = c * (CHUNK_SIZE - x) + d * x;
+  return (top * (CHUNK_SIZE - z) + bottom * z) / (CHUNK_SIZE * CHUNK_SIZE);
 }
 
 int getHeightAt (int rx, int rz, int _x, int _z, uint32_t chunk_hash) {
@@ -62,40 +62,34 @@ int getHeightAt (int rx, int rz, int _x, int _z, uint32_t chunk_hash) {
 
 }
 
-typedef struct {
-  short x;
-  short z;
-  uint32_t hash;
-} ChunkAnchor;
-
 uint8_t getTerrainAt (int x, int y, int z, ChunkAnchor anchor) {
 
   if (y > 80) return B_air;
 
-  int rx = x % chunk_size;
-  int rz = z % chunk_size;
-  if (rx < 0) rx += chunk_size;
-  if (rz < 0) rz += chunk_size;
+  int rx = x % CHUNK_SIZE;
+  int rz = z % CHUNK_SIZE;
+  if (rx < 0) rx += CHUNK_SIZE;
+  if (rz < 0) rz += CHUNK_SIZE;
 
   int height = getHeightAt(rx, rz, anchor.x, anchor.z, anchor.hash);
 
   if (y >= 64 && y >= height) {
 
-    uint8_t tree_position = anchor.hash % (chunk_size * chunk_size);
+    uint8_t tree_position = anchor.hash % (CHUNK_SIZE * CHUNK_SIZE);
 
-    short tree_x = tree_position % chunk_size;
-    if (tree_x < 3 || tree_x > chunk_size - 3) goto skip_tree;
-    short tree_z = tree_position / chunk_size;
-    if (tree_z < 3 || tree_z > chunk_size - 3) goto skip_tree;
+    short tree_x = tree_position % CHUNK_SIZE;
+    if (tree_x < 3 || tree_x > CHUNK_SIZE - 3) goto skip_tree;
+    short tree_z = tree_position / CHUNK_SIZE;
+    if (tree_z < 3 || tree_z > CHUNK_SIZE - 3) goto skip_tree;
 
     uint8_t tree_short = (anchor.hash >> (tree_x + tree_z)) & 1;
 
-    tree_x += anchor.x * chunk_size;
-    tree_z += anchor.z * chunk_size;
+    tree_x += anchor.x * CHUNK_SIZE;
+    tree_z += anchor.z * CHUNK_SIZE;
 
     uint8_t tree_y = getHeightAt(
-      tree_x < 0 ? tree_x % chunk_size + chunk_size : tree_x % chunk_size,
-      tree_z < 0 ? tree_z % chunk_size + chunk_size : tree_z % chunk_size,
+      tree_x < 0 ? tree_x % CHUNK_SIZE + CHUNK_SIZE : tree_x % CHUNK_SIZE,
+      tree_z < 0 ? tree_z % CHUNK_SIZE + CHUNK_SIZE : tree_z % CHUNK_SIZE,
       anchor.x, anchor.z, anchor.hash
     ) + 1;
     if (tree_y < 64) goto skip_tree;
@@ -128,8 +122,8 @@ skip_tree:
   // Starting at 4 blocks below terrain level, generate minerals and caves
   if (y <= height - 4) {
     // Caves use the same shape as surface terrain, just mirrored
-    int8_t gap = height - terrain_base_height;
-    if (y < cave_base_depth + gap && y > cave_base_depth - gap) return B_air;
+    int8_t gap = height - TERRAIN_BASE_HEIGHT;
+    if (y < CAVE_BASE_DEPTH + gap && y > CAVE_BASE_DEPTH - gap) return B_air;
 
     // The chunk-relative X and Z coordinates are used in a bit shift on the hash
     // The sum of these is then used to get the Y coordinate of the ore in this column
@@ -171,11 +165,11 @@ uint8_t getBlockAt (int x, int y, int z) {
   if (block_change != 0xFF) return block_change;
 
   ChunkAnchor anchor = {
-    x / chunk_size,
-    z / chunk_size
+    x / CHUNK_SIZE,
+    z / CHUNK_SIZE
   };
-  if (x % chunk_size < 0) anchor.x --;
-  if (z % chunk_size < 0) anchor.z --;
+  if (x % CHUNK_SIZE < 0) anchor.x --;
+  if (z % CHUNK_SIZE < 0) anchor.z --;
   anchor.hash = getChunkHash(anchor.x, anchor.z);
 
   return getTerrainAt(x, y, z, anchor);
@@ -183,19 +177,19 @@ uint8_t getBlockAt (int x, int y, int z) {
 }
 
 uint8_t chunk_section[4096];
-ChunkAnchor chunk_anchors[256 / (chunk_size * chunk_size)];
+ChunkAnchor chunk_anchors[256 / (CHUNK_SIZE * CHUNK_SIZE)];
 
 void buildChunkSection (int cx, int cy, int cz) {
 
   // Precompute the hashes and anchors for each minichunk
   int anchor_index = 0;
-  for (int i = cz; i < cz + 16; i += chunk_size) {
-    for (int j = cx; j < cx + 16; j += chunk_size) {
+  for (int i = cz; i < cz + 16; i += CHUNK_SIZE) {
+    for (int j = cx; j < cx + 16; j += CHUNK_SIZE) {
 
       ChunkAnchor *anchor = chunk_anchors + anchor_index;
 
-      anchor->x = j / chunk_size;
-      anchor->z = i / chunk_size;
+      anchor->x = j / CHUNK_SIZE;
+      anchor->z = i / CHUNK_SIZE;
       anchor->hash = getChunkHash(anchor->x, anchor->z);
 
       anchor_index ++;
@@ -211,7 +205,7 @@ void buildChunkSection (int cx, int cy, int cz) {
     // The client expects "big-endian longs", which in our
     // case means reversing the order in which we store/send
     // each 8 block sequence.
-    anchor_index = (j % 16) / chunk_size + (j / 16 % 16) / chunk_size * 2;
+    anchor_index = (j % 16) / CHUNK_SIZE + (j / 16 % 16) / CHUNK_SIZE * 2;
     for (int offset = 7; offset >= 0; offset--) {
       int k = j + offset;
       int x = k % 16 + cx;
