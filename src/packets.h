@@ -17,7 +17,7 @@ int sc_knownPacks (int client_fd);
 int sc_finishConfiguration (int client_fd);
 int sc_loginPlay (int client_fd);
 int sc_synchronizePlayerPosition (int client_fd, double x, double y, double z, float yaw, float pitch);
-int sc_setDefaultSpawnPosition (int client_fd, long x, long y, long z);
+int sc_setDefaultSpawnPosition (int client_fd, int64_t x, int64_t y, int64_t z);
 int sc_startWaitingForChunks (int client_fd);
 int sc_playerAbilities (int client_fd, uint8_t flags);
 int sc_updateTime (int client_fd, uint64_t ticks);

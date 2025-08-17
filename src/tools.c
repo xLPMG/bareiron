@@ -195,7 +195,7 @@ void clearPlayerFD (int client_fd) {
 }
 
 uint8_t serverSlotToClientSlot (uint8_t slot) {
-  if (slot >= 0 && slot < 9) return slot + 36;
+  if (slot < 9) return slot + 36;
   if (slot >= 9 && slot <= 35) return slot;
   if (slot == 40) return 45;
   if (slot >= 36 && slot <= 39) return 3 - (slot - 36) + 5;
@@ -229,7 +229,7 @@ uint8_t clientSlotToServerSlot (int window_id, uint8_t slot) {
 
     // move furnace items to the player's crafting grid
     // this lets us put them back in the inventory once the window closes
-    if (slot >= 0 && slot <= 2) return 41 + slot;
+    if (slot <= 2) return 41 + slot;
     // the rest of the slots are identical, just shifted by 6
     if (slot >= 3 && slot <= 38) return clientSlotToServerSlot(0, slot + 6);
 

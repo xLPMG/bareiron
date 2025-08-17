@@ -226,7 +226,7 @@ int sc_synchronizePlayerPosition (int client_fd, double x, double y, double z, f
 }
 
 // S->C Set Default Spawn Position
-int sc_setDefaultSpawnPosition (int client_fd, long x, long y, long z) {
+int sc_setDefaultSpawnPosition (int client_fd, int64_t x, int64_t y, int64_t z) {
 
   writeVarInt(client_fd, sizeVarInt(0x5A) + 12);
   writeVarInt(client_fd, 0x5A);

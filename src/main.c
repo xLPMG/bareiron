@@ -20,12 +20,12 @@
   #include <unistd.h>
 #endif
 
-#include "src/globals.h"
-#include "src/tools.h"
-#include "src/varnum.h"
-#include "src/packets.h"
-#include "src/worldgen.h"
-#include "src/registries.h"
+#include "globals.h"
+#include "tools.h"
+#include "varnum.h"
+#include "packets.h"
+#include "worldgen.h"
+#include "registries.h"
 
 uint64_t world_time = 0;
 
@@ -251,7 +251,6 @@ int main () {
   int server_fd, client_fd, opt = 1;
   struct sockaddr_in server_addr, client_addr;
   socklen_t addr_len = sizeof(client_addr);
-  struct sockaddr_in addr;
 
   // Create socket
   server_fd = socket(AF_INET, SOCK_STREAM, 0);
