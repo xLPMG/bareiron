@@ -20,6 +20,10 @@
 #define PORT 25565
 #define MAX_PLAYERS 16
 #define GAMEMODE 0
+#define VIEW_DISTANCE 2
+// How many visited chunks to "remember"
+// The server will not re-send chunks that the player has recently been in
+#define VISITED_HISTORY 4
 
 #define STATE_NONE 0
 #define STATE_STATUS 1
@@ -49,6 +53,8 @@ typedef struct {
   short x;
   short y;
   short z;
+  short visited_x[VISITED_HISTORY];
+  short visited_z[VISITED_HISTORY];
   int8_t yaw;
   int8_t pitch;
   uint8_t hotbar;

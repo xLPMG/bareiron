@@ -158,7 +158,7 @@ int sc_loginPlay (int client_fd) {
   // maxplayers
   writeVarInt(client_fd, MAX_PLAYERS);
   // view distance
-  writeVarInt(client_fd, 2);
+  writeVarInt(client_fd, VIEW_DISTANCE);
   // sim distance
   writeVarInt(client_fd, 2);
   // reduced debug info

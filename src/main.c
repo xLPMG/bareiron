@@ -153,49 +153,22 @@ void handlePacket (int client_fd, int length, int packet_id) {
         double x, y, z;
         float yaw, pitch;
 
+        // Read player position (and rotation)
         if (packet_id == 0x1D) cs_setPlayerPosition(client_fd, &x, &y, &z);
         else cs_setPlayerPositionAndRotation(client_fd, &x, &y, &z, &yaw, &pitch);
+        // Cast the values to short to get integer position
         short cx = x, cy = y, cz = z;
 
         PlayerData *player;
         if (getPlayerData(client_fd, &player)) break;
 
+        // Determine the player's chunk coordinates
         short _x = (cx < 0 ? cx - 16 : cx) / 16, _z = (cz < 0 ? cz - 16 : cz) / 16;
-        short dx = _x - (player->x < 0 ? player->x - 16 : player->x) / 16, dz = _z - (player->z < 0 ? player->z - 16 : player->z) / 16;
+        // Calculate distance between previous and current chunk coordinates
+        short dx = _x - (player->x < 0 ? player->x - 16 : player->x) / 16;
+        short dz = _z - (player->z < 0 ? player->z - 16 : player->z) / 16;
 
-        if (dx != 0 || dz != 0) {
-
-          printf("sending new chunks (%d, %d)\n", _x, _z);
-          sc_setCenterChunk(client_fd, _x, _z);
-
-          clock_t start, end;
-          int count = 0;
-          start = clock();
-
-          if (dx != 0 && dz != 0) {
-            sc_chunkDataAndUpdateLight(client_fd, _x + dx * 2, _z - dx);
-            sc_chunkDataAndUpdateLight(client_fd, _x + dx * 2, _z);
-            sc_chunkDataAndUpdateLight(client_fd, _x + dx * 2, _z + dz);
-            sc_chunkDataAndUpdateLight(client_fd, _x + dx * 2, _z + dz * 2);
-            sc_chunkDataAndUpdateLight(client_fd, _x + dx, _z + dz * 2);
-            sc_chunkDataAndUpdateLight(client_fd, _x, _z + dz * 2);
-            sc_chunkDataAndUpdateLight(client_fd, _x - dz, _z + dz * 2);
-            count += 5;
-          } else {
-            for (int i = -2; i <= 2; i ++) {
-              count ++;
-              sc_chunkDataAndUpdateLight(client_fd, _x + dx * 2 + i * dz, _z + dz * 2 + i * dx);
-              printf("(%d, %d) ", _x + dx * 2 + i * dz, _z + dz * 2 + i * dx);
-            }
-            printf("\n");
-          }
-
-          end = clock();
-          double total_ms = (double)(end - start) / CLOCKS_PER_SEC * 1000;
-          printf("generated %d chunks in %.0f ms (%.2f ms per chunk)\n", count, total_ms, total_ms / count);
-
-        }
-
+        // Update position (and rotation) in player data
         player->x = cx;
         player->y = cy;
         player->z = cz;
@@ -203,6 +176,53 @@ void handlePacket (int client_fd, int length, int packet_id) {
           player->yaw = ((short)(yaw + 540) % 360 - 180) * 127 / 180;
           player->pitch = pitch / 90.0f * 127.0f;
         }
+
+        // Exit early if no chunk borders were crossed
+        if (dx == 0 && dz == 0) return;
+
+        // Check if the player has recently been in this chunk
+        int found = false;
+        for (int i = 0; i < VISITED_HISTORY; i ++) {
+          if (player->visited_x[i] == _x && player->visited_z[i] == _z) {
+            found = true;
+            break;
+          }
+        }
+        if (found) return;
+
+        // Update player's recently visited chunks
+        for (int i = 0; i < VISITED_HISTORY; i ++) {
+          player->visited_x[i] = player->visited_x[i + 1];
+          player->visited_z[i] = player->visited_z[i + 1];
+        }
+        player->visited_x[VISITED_HISTORY - 1] = _x;
+        player->visited_z[VISITED_HISTORY - 1] = _z;
+
+        printf("sending new chunks (%d, %d)\n", _x, _z);
+        sc_setCenterChunk(client_fd, _x, _z);
+
+        clock_t start, end;
+        start = clock();
+
+        if (dx != 0 && dz != 0) {
+          sc_chunkDataAndUpdateLight(client_fd, _x + dx * 2, _z - dx);
+          sc_chunkDataAndUpdateLight(client_fd, _x + dx * 2, _z);
+          sc_chunkDataAndUpdateLight(client_fd, _x + dx * 2, _z + dz);
+          sc_chunkDataAndUpdateLight(client_fd, _x + dx * 2, _z + dz * 2);
+          sc_chunkDataAndUpdateLight(client_fd, _x + dx, _z + dz * 2);
+          sc_chunkDataAndUpdateLight(client_fd, _x, _z + dz * 2);
+          sc_chunkDataAndUpdateLight(client_fd, _x - dz, _z + dz * 2);
+        } else {
+          sc_chunkDataAndUpdateLight(client_fd, _x + dx * 2, _z + dz * 2);
+          sc_chunkDataAndUpdateLight(client_fd, _x + dx * 2 + dz, _z + dz * 2 + dx);
+          sc_chunkDataAndUpdateLight(client_fd, _x + dx * 2 - dz, _z + dz * 2 - dx);
+          sc_chunkDataAndUpdateLight(client_fd, _x + dx * 2 + dz * 2, _z + dz * 2 + dx * 2);
+          sc_chunkDataAndUpdateLight(client_fd, _x + dx * 2 - dz * 2, _z + dz * 2 - dx * 2);
+        }
+
+        end = clock();
+        double total_ms = (double)(end - start) / CLOCKS_PER_SEC * 1000;
+        printf("generated 5 chunks in %.0f ms (%.2f ms per chunk)\n", total_ms, total_ms / 5.0f);
 
         return;
       }
