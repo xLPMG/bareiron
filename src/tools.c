@@ -194,11 +194,28 @@ void clearPlayerFD (int client_fd) {
   }
 }
 
-uint8_t serverSlotToClientSlot (uint8_t slot) {
-  if (slot < 9) return slot + 36;
-  if (slot >= 9 && slot <= 35) return slot;
-  if (slot == 40) return 45;
-  if (slot >= 36 && slot <= 39) return 3 - (slot - 36) + 5;
+uint8_t serverSlotToClientSlot (int window_id, uint8_t slot) {
+
+  if (window_id == 0) { // player inventory
+
+    if (slot < 9) return slot + 36;
+    if (slot >= 9 && slot <= 35) return slot;
+    if (slot == 40) return 45;
+    if (slot >= 36 && slot <= 39) return 3 - (slot - 36) + 5;
+    if (slot >= 41 && slot <= 44) return slot - 40;
+
+  } else if (window_id == 12) { // crafting table
+
+    if (slot >= 41 && slot <= 49) return slot - 40;
+    return serverSlotToClientSlot(0, slot - 1);
+
+  } else if (window_id == 14) { // furnace
+
+    if (slot >= 41 && slot <= 43) return slot - 41;
+    return serverSlotToClientSlot(0, slot + 6);
+
+  }
+
   return 255;
 }
 
@@ -238,14 +255,11 @@ uint8_t clientSlotToServerSlot (int window_id, uint8_t slot) {
   return 255;
 }
 
-int givePlayerItem (int client_fd, uint16_t item) {
-
-  PlayerData *player;
-  if (getPlayerData(client_fd, &player)) return 1;
+int givePlayerItem (PlayerData *player, uint16_t item, uint8_t count) {
 
   uint8_t slot = 255;
   for (int i = 0; i < 41; i ++) {
-    if (player->inventory_items[i] == item && player->inventory_count[i] < 64) {
+    if (player->inventory_items[i] == item && player->inventory_count[i] <= 64 - count) {
       slot = i;
       break;
     }
@@ -263,8 +277,8 @@ int givePlayerItem (int client_fd, uint16_t item) {
   if (slot == 255) return 1;
 
   player->inventory_items[slot] = item;
-  player->inventory_count[slot] ++;
-  sc_setContainerSlot(client_fd, 0, serverSlotToClientSlot(slot), player->inventory_count[slot], item);
+  player->inventory_count[slot] += count;
+  sc_setContainerSlot(player->client_fd, 0, serverSlotToClientSlot(0, slot), player->inventory_count[slot], item);
 
   return 0;
 
@@ -324,7 +338,7 @@ uint16_t getMiningResult (int client_fd, uint8_t block) {
   ) {
     player->inventory_items[player->hotbar] = 0;
     player->inventory_count[player->hotbar] = 0;
-    sc_setContainerSlot(client_fd, 0, serverSlotToClientSlot(player->hotbar), 0, 0);
+    sc_setContainerSlot(client_fd, 0, serverSlotToClientSlot(0, player->hotbar), 0, 0);
   }
 
   switch (block) {

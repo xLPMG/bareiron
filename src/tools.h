@@ -35,9 +35,9 @@ int getClientIndex (int client_fd);
 int reservePlayerData (int client_fd, char *uuid);
 int getPlayerData (int client_fd, PlayerData **output);
 void clearPlayerFD (int client_fd);
-int givePlayerItem (int client_fd, uint16_t item);
+int givePlayerItem (PlayerData *player, uint16_t item, uint8_t count);
 
-uint8_t serverSlotToClientSlot (uint8_t slot);
+uint8_t serverSlotToClientSlot (int window_id, uint8_t slot);
 uint8_t clientSlotToServerSlot (int window_id, uint8_t slot);
 
 uint8_t getBlockChange (short x, short y, short z);

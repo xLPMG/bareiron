@@ -11,6 +11,7 @@ int cs_setPlayerPositionAndRotation (int client_fd, double *x, double *y, double
 int cs_setPlayerPosition (int client_fd, double *x, double *y, double *z);
 int cs_setHeldItem (int client_fd);
 int cs_clickContainer (int client_fd);
+int cs_closeContainer (int client_fd);
 
 int sc_loginSuccess (int client_fd, char *name, char *uuid);
 int sc_knownPacks (int client_fd);

@@ -94,7 +94,7 @@ void handlePacket (int client_fd, int length, int packet_id) {
         sc_synchronizePlayerPosition(client_fd, spawn_x, spawn_y, spawn_z, spawn_yaw, spawn_pitch);
 
         for (uint8_t i = 0; i < 41; i ++) {
-          sc_setContainerSlot(client_fd, 0, serverSlotToClientSlot(i), player->inventory_count[i], player->inventory_items[i]);
+          sc_setContainerSlot(client_fd, 0, serverSlotToClientSlot(0, i), player->inventory_count[i], player->inventory_items[i]);
         }
         sc_setHeldItem(client_fd, player->hotbar);
 
@@ -142,6 +142,13 @@ void handlePacket (int client_fd, int length, int packet_id) {
     case 0x11:
       if (state == STATE_PLAY) {
         cs_clickContainer(client_fd);
+        return;
+      }
+      break;
+
+    case 0x12:
+      if (state == STATE_PLAY) {
+        cs_closeContainer(client_fd);
         return;
       }
       break;

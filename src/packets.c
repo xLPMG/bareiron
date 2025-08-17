@@ -430,7 +430,11 @@ int cs_playerAction (int client_fd) {
 
     makeBlockChange(x, y, z, 0);
 
-    if (item) givePlayerItem(client_fd, item);
+    if (item) {
+      PlayerData *player;
+      if (getPlayerData(client_fd, &player)) return 1;
+      givePlayerItem(player, item, 1);
+    }
 
   }
 
@@ -639,6 +643,26 @@ int sc_setHeldItem (int client_fd, uint8_t slot) {
   writeVarInt(client_fd, 0x62);
 
   writeByte(client_fd, slot);
+
+  return 0;
+}
+
+// C->S Close Container (serverbound)
+int cs_closeContainer (int client_fd) {
+
+  uint8_t window_id = readVarInt(client_fd);
+
+  PlayerData *player;
+  if (getPlayerData(client_fd, &player)) return 1;
+
+  // return all items in crafting slots to the player
+  for (uint8_t i = 0; i < 9; i ++) {
+    givePlayerItem(player, player->craft_items[i], player->craft_count[i]);
+    player->craft_items[i] = 0;
+    player->craft_count[i] = 0;
+    uint8_t client_slot = serverSlotToClientSlot(window_id, 41 + i);
+    if (client_slot != 255) sc_setContainerSlot(player->client_fd, 0, client_slot, 0, 0);
+  }
 
   return 0;
 }
