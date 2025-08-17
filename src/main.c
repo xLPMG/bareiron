@@ -10,6 +10,7 @@
 #ifdef ESP_PLATFORM
   #include "freertos/FreeRTOS.h"
   #include "freertos/task.h"
+  #include "nvs_flash.h"
   #include "esp_wifi.h"
   #include "esp_event.h"
   #include "esp_task_wdt.h"
@@ -360,6 +361,7 @@ static void wifi_event_handler (void *arg, esp_event_base_t event_base, int32_t 
 }
 
 void wifi_init () {
+  nvs_flash_init();
   esp_netif_init();
   esp_event_loop_create_default();
   esp_netif_create_default_wifi_sta();
