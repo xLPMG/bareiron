@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <fcntl.h>
+#include <errno.h>
 
 #ifndef CLOCK_REALTIME
 #define CLOCK_REALTIME 0
@@ -266,15 +268,29 @@ void handlePacket (int client_fd, int length, int packet_id) {
 
 }
 
+void disconnectClient (int *client_fd, int cause) {
+  setClientState(*client_fd, STATE_NONE);
+  clearPlayerFD(*client_fd);
+  close(*client_fd);
+  *client_fd = -1;
+  printf("Disconnected client %d, cause: %d, errno: %d\n\n", *client_fd, cause, errno);
+}
+
 int main () {
 
   for (int i = 0; i < sizeof(block_changes) / sizeof(BlockChange); i ++) {
     block_changes[i].block = 0xFF;
   }
 
-  int server_fd, client_fd, opt = 1;
+  int server_fd, opt = 1;
   struct sockaddr_in server_addr, client_addr;
   socklen_t addr_len = sizeof(client_addr);
+
+  int clients[MAX_PLAYERS], client_index = 0;
+  for (int i = 0; i < MAX_PLAYERS; i ++) {
+    clients[i] = -1;
+    client_states[i * 2] = -1;
+  }
 
   // Create socket
   server_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -305,62 +321,99 @@ int main () {
     close(server_fd);
     exit(EXIT_FAILURE);
   }
-
   printf("Server listening on port %d...\n", PORT);
 
+  // Set non-blocking socket flag
+  int flags = fcntl(server_fd, F_GETFL, 0);
+  fcntl(server_fd, F_SETFL, flags | O_NONBLOCK);
+
+  // Track client keep-alives
+  struct timespec time_now;
+  struct timespec keepalive_last;
+  clock_gettime(CLOCK_REALTIME, &time_now);
+  clock_gettime(CLOCK_REALTIME, &keepalive_last);
+
+  /**
+   * Cycles through all connected clients, handling one packet at a time
+   * from each player. With every iteration, attempts to accept a new
+   * client connection.
+   */
   while (true) {
-
-    // Accept a connection
-    client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &addr_len);
-    if (client_fd < 0) {
-      perror("accept failed");
-      close(server_fd);
-      exit(EXIT_FAILURE);
-    }
-
-    printf("Client connected.\n");
-
-    struct timespec time_now;
-    struct timespec keepalive_last;
-    clock_gettime(CLOCK_REALTIME, &time_now);
-    clock_gettime(CLOCK_REALTIME, &keepalive_last);
-
-    while (true) {
-
-      if (getClientState(client_fd) == STATE_PLAY) {
-        clock_gettime(CLOCK_REALTIME, &time_now);
-        if (time_now.tv_sec - keepalive_last.tv_sec > 10) {
-          sc_keepAlive(client_fd);
-          sc_updateTime(client_fd, world_time += 200);
-          clock_gettime(CLOCK_REALTIME, &keepalive_last);
-          /**
-           * If the RNG seed ever hits 0, it'll never generate anything
-           * else. This is because the fast_rand function uses a simple
-           * XORshift. This isn't a common concern, so we only check for
-           * this periodically. If it does become zero, we reset it to
-           * the world seed as a good-enough fallback.
-           */
-          if (rng_seed == 0) rng_seed = world_seed;
-        }
-      }
-
-      int length = readVarInt(client_fd);
-      if (length == VARNUM_ERROR) break;
-      int packet_id = readVarInt(client_fd);
-      if (packet_id == VARNUM_ERROR) break;
-      handlePacket(client_fd, length - sizeVarInt(packet_id), packet_id);
-      if (recv_count == -1) break;
-
-      wdt_reset();
-    }
-
-    setClientState(client_fd, STATE_NONE);
-    clearPlayerFD(client_fd);
-
-    close(client_fd);
-    printf("Connection closed.\n");
-
     wdt_reset();
+
+    // Attempt to accept a new connection
+    for (int i = 0; i < MAX_PLAYERS; i ++) {
+      if (clients[i] != -1) continue;
+      clients[i] = accept(server_fd, (struct sockaddr *)&client_addr, &addr_len);
+      // If the accept was successful, make the client non-blocking too
+      if (clients[i] != -1) {
+        printf("New client, fd: %d\n", clients[i]);
+        int flags = fcntl(clients[i], F_GETFL, 0);
+        fcntl(clients[i], F_SETFL, flags | O_NONBLOCK);
+      }
+      break;
+    }
+
+    // Look for valid connected clients
+    client_index ++;
+    if (client_index == MAX_PLAYERS) client_index = 0;
+    if (clients[client_index] == -1) continue;
+
+    // Handle infrequent periodic events every 10 seconds
+    clock_gettime(CLOCK_REALTIME, &time_now);
+    time_t seconds_since_update = time_now.tv_sec - keepalive_last.tv_sec;
+    if (seconds_since_update > 10) {
+      // Send Keep Alive and Update Time packets to all in-game clients
+      world_time += 20 * seconds_since_update;
+      for (int i = 0; i < MAX_PLAYERS; i ++) {
+        if (clients[i] == -1) continue;
+        if (getClientState(clients[i]) != STATE_PLAY) continue;
+        sc_keepAlive(clients[i]);
+        sc_updateTime(clients[i], world_time);
+      }
+      // Reset keep-alive timer
+      clock_gettime(CLOCK_REALTIME, &keepalive_last);
+      /**
+       * If the RNG seed ever hits 0, it'll never generate anything
+       * else. This is because the fast_rand function uses a simple
+       * XORshift. This isn't a common concern, so we only check for
+       * this periodically. If it does become zero, we reset it to
+       * the world seed as a good-enough fallback.
+       */
+      if (rng_seed == 0) rng_seed = world_seed;
+    }
+
+    // Handle this individual client
+    int client_fd = clients[client_index];
+
+    // Check if at least 2 bytes are available for reading
+    ssize_t recv_count = recv(client_fd, &recv_buffer, 2, MSG_PEEK);
+    if (recv_count < 2) {
+      if (recv_count == 0 || (recv_count < 0 && errno != EAGAIN && errno != EWOULDBLOCK)) {
+        disconnectClient(&clients[client_index], 1);
+      }
+      continue;
+    }
+
+    // Read packet length
+    int length = readVarInt(client_fd);
+    if (length == VARNUM_ERROR) {
+      disconnectClient(&clients[client_index], 2);
+      continue;
+    }
+    // Read packet ID
+    int packet_id = readVarInt(client_fd);
+    if (packet_id == VARNUM_ERROR) {
+      disconnectClient(&clients[client_index], 3);
+      continue;
+    }
+    // Handle packet data
+    handlePacket(client_fd, length - sizeVarInt(packet_id), packet_id);
+    if (recv_count == 0 || (recv_count == -1 && errno != EAGAIN && errno != EWOULDBLOCK)) {
+      disconnectClient(&clients[client_index], 4);
+      continue;
+    }
+
   }
 
   close(server_fd);

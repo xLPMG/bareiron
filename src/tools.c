@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #ifdef ESP_PLATFORM
   #include "lwip/sockets.h"
@@ -24,6 +25,42 @@ static uint64_t htonll (uint64_t value) {
 #else
   return value;
 #endif
+}
+
+ssize_t recv_all (int client_fd, void *buf, size_t n, uint8_t require_first) {
+  char *p = buf;
+  size_t total = 0;
+
+  // First-byte check if requested
+  if (require_first) {
+    ssize_t r = recv(client_fd, p, 1, MSG_PEEK);
+    if (r <= 0) {
+      if (r < 0 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+        return 0; // no first byte available yet
+      }
+      return -1; // error or connection closed
+    }
+  }
+
+  // Busy-wait until we get exactly n bytes
+  while (total < n) {
+    ssize_t r = recv(client_fd, p + total, n - total, 0);
+    if (r < 0) {
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        // spin until data arrives
+        wdt_reset();
+        continue;
+      } else {
+        return -1; // real error
+      }
+    } else if (r == 0) {
+      // connection closed before full read
+      return total;
+    }
+    total += r;
+  }
+
+  return total; // got exactly n bytes
 }
 
 ssize_t writeByte (int client_fd, uint8_t byte) {
@@ -55,22 +92,22 @@ ssize_t writeDouble (int client_fd, double num) {
 }
 
 uint8_t readByte (int client_fd) {
-  recv_count = recv(client_fd, recv_buffer, 1, MSG_WAITALL);
+  recv_count = recv_all(client_fd, recv_buffer, 1, false);
   return recv_buffer[0];
 }
 uint16_t readUint16 (int client_fd) {
-  recv_count = recv(client_fd, recv_buffer, 2, MSG_WAITALL);
+  recv_count = recv_all(client_fd, recv_buffer, 2, false);
   return ((uint16_t)recv_buffer[0] << 8) | recv_buffer[1];
 }
 uint32_t readUint32 (int client_fd) {
-  recv_count = recv(client_fd, recv_buffer, 4, MSG_WAITALL);
+  recv_count = recv_all(client_fd, recv_buffer, 4, false);
   return ((uint32_t)recv_buffer[0] << 24) |
          ((uint32_t)recv_buffer[1] << 16) |
          ((uint32_t)recv_buffer[2] << 8) |
          ((uint32_t)recv_buffer[3]);
 }
 uint64_t readUint64 (int client_fd) {
-  recv_count = recv(client_fd, recv_buffer, 8, MSG_WAITALL);
+  recv_count = recv_all(client_fd, recv_buffer, 8, false);
   return ((uint64_t)recv_buffer[0] << 56) |
          ((uint64_t)recv_buffer[1] << 48) |
          ((uint64_t)recv_buffer[2] << 40) |
@@ -81,7 +118,7 @@ uint64_t readUint64 (int client_fd) {
          ((uint64_t)recv_buffer[7]);
 }
 int64_t readInt64 (int client_fd) {
-  recv_count = recv(client_fd, recv_buffer, 8, MSG_WAITALL);
+  recv_count = recv_all(client_fd, recv_buffer, 8, false);
   return ((int64_t)recv_buffer[0] << 56) |
          ((int64_t)recv_buffer[1] << 48) |
          ((int64_t)recv_buffer[2] << 40) |
@@ -106,7 +143,7 @@ double readDouble (int client_fd) {
 
 void readString (int client_fd) {
   uint32_t length = readVarInt(client_fd);
-  recv_count = recv(client_fd, recv_buffer, length, MSG_WAITALL);
+  recv_count = recv_all(client_fd, recv_buffer, length, false);
   recv_buffer[recv_count] = '\0';
 }
 
@@ -127,10 +164,18 @@ uint64_t splitmix64 (uint64_t state) {
 int client_states[MAX_PLAYERS * 2];
 
 void setClientState (int client_fd, int new_state) {
+  // Look for a client state with a matching file descriptor
   for (int i = 0; i < MAX_PLAYERS * 2; i += 2) {
-    if (client_states[i] != client_fd && client_states[i] != 0) continue;
+    if (client_states[i] != client_fd) continue;
+    client_states[i + 1] = new_state;
+    return;
+  }
+  // If the above failed, look for an unused client state slot
+  for (int i = 0; i < MAX_PLAYERS * 2; i += 2) {
+    if (client_states[i] != -1) continue;
     client_states[i] = client_fd;
     client_states[i + 1] = new_state;
+    return;
   }
 }
 
@@ -299,8 +344,10 @@ uint8_t getBlockChange (short x, short y, short z) {
 
 void makeBlockChange (short x, short y, short z, uint8_t block) {
 
-  // Transmit block update to all managed clients
+  // Transmit block update to all in-game clients
   for (int i = 0; i < MAX_PLAYERS; i ++) {
+    if (player_data[i].client_fd == -1) continue;
+    if (getClientState(player_data[i].client_fd) != STATE_PLAY) continue;
     sc_blockUpdate(player_data[i].client_fd, x, y, z, block);
   }
 

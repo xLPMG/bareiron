@@ -43,7 +43,7 @@ int cs_loginStart (int client_fd) {
   readString(client_fd);
   if (recv_count == -1) return 1;
   printf("  Player name: %s\n", recv_buffer);
-  recv_count = recv(client_fd, recv_buffer + 17, 16, MSG_WAITALL);
+  recv_count = recv_all(client_fd, recv_buffer + 17, 16, false);
   if (recv_count == -1) return 1;
   printf("  Player UUID: ");
   for (int i = 17; i < 33; i ++) printf("%x", recv_buffer[i]);
@@ -413,6 +413,14 @@ int sc_blockUpdate (int client_fd, int64_t x, int64_t y, int64_t z, uint8_t bloc
   writeVarInt(client_fd, block_palette[block]);
 }
 
+// S->C Acknowledge Block Change
+int sc_acknowledgeBlockChange (int client_fd, int sequence) {
+  writeVarInt(client_fd, 1 + sizeVarInt(sequence));
+  writeByte(client_fd, 0x04);
+  writeVarInt(client_fd, sequence);
+  return 0;
+}
+
 // C->S Player Action
 int cs_playerAction (int client_fd) {
 
@@ -426,6 +434,7 @@ int cs_playerAction (int client_fd) {
   readByte(client_fd); // ignore face
 
   int sequence = readVarInt(client_fd);
+  sc_acknowledgeBlockChange(client_fd, sequence);
 
   if ((action == 0 && GAMEMODE == 1)) {
     // block was mined in creative
@@ -488,6 +497,7 @@ int cs_useItemOn (int client_fd) {
   readByte(client_fd);
 
   int sequence = readVarInt(client_fd);
+  sc_acknowledgeBlockChange(client_fd, sequence);
 
   uint8_t target = getBlockAt(x, y, z);
   if (target == B_crafting_table) {
@@ -572,9 +582,9 @@ int cs_clickContainer (int client_fd) {
 
     // ignore components
     tmp = readVarInt(client_fd);
-    recv(client_fd, recv_buffer, tmp, MSG_WAITALL);
+    recv_all(client_fd, recv_buffer, tmp, false);
     tmp = readVarInt(client_fd);
-    recv(client_fd, recv_buffer, tmp, MSG_WAITALL);
+    recv_all(client_fd, recv_buffer, tmp, false);
 
     if (count > 0) {
       player->inventory_items[slot] = item;
@@ -599,9 +609,9 @@ int cs_clickContainer (int client_fd) {
     readVarInt(client_fd);
     readVarInt(client_fd);
     tmp = readVarInt(client_fd);
-    recv(client_fd, recv_buffer, tmp, MSG_WAITALL);
+    recv_all(client_fd, recv_buffer, tmp, false);
     tmp = readVarInt(client_fd);
-    recv(client_fd, recv_buffer, tmp, MSG_WAITALL);
+    recv_all(client_fd, recv_buffer, tmp, false);
   }
 
   return 0;

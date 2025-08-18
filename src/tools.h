@@ -6,6 +6,8 @@
 
 #include "globals.h"
 
+ssize_t recv_all (int client_fd, void *buf, size_t n, uint8_t require_first);
+
 ssize_t writeByte (int client_fd, uint8_t byte);
 ssize_t writeUint16 (int client_fd, uint16_t num);
 ssize_t writeUint32 (int client_fd, uint32_t num);
