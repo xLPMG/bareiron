@@ -330,7 +330,7 @@ int givePlayerItem (PlayerData *player, uint16_t item, uint8_t count) {
 
 }
 
-uint8_t getBlockChange (short x, short y, short z) {
+uint8_t getBlockChange (short x, uint8_t y, short z) {
   for (int i = 0; i < block_changes_count; i ++) {
     if (block_changes[i].block == 0xFF) continue;
     if (
@@ -342,7 +342,7 @@ uint8_t getBlockChange (short x, short y, short z) {
   return 0xFF;
 }
 
-void makeBlockChange (short x, short y, short z, uint8_t block) {
+void makeBlockChange (short x, uint8_t y, short z, uint8_t block) {
 
   // Transmit block update to all in-game clients
   for (int i = 0; i < MAX_PLAYERS; i ++) {

@@ -42,7 +42,7 @@ extern uint32_t rng_seed;
 
 typedef struct {
   short x;
-  short y;
+  uint8_t y;
   short z;
   uint8_t block;
 } BlockChange;
