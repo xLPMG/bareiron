@@ -55,12 +55,12 @@ int getCornerHeight (uint32_t hash, uint8_t biome) {
   // When calculating the height, parts of the hash are used as random values.
   // Often, multiple values are stacked to stabilize the distribution while
   // allowing for occasionally larger variances.
-  int height;
+  int height = TERRAIN_BASE_HEIGHT;
 
   switch (biome) {
 
     case W_mangrove_swamp: {
-      height = TERRAIN_BASE_HEIGHT + (
+      height += (
         (hash % 3) +
         ((hash >> 4) % 3) +
         ((hash >> 8) % 3) +
@@ -73,7 +73,7 @@ int getCornerHeight (uint32_t hash, uint8_t biome) {
     }
 
     case W_plains: {
-      height = TERRAIN_BASE_HEIGHT + (
+      height += (
         (hash & 3) +
         (hash >> 4 & 3) +
         (hash >> 8 & 3) +
@@ -83,7 +83,7 @@ int getCornerHeight (uint32_t hash, uint8_t biome) {
     }
 
     case W_desert: {
-      height = TERRAIN_BASE_HEIGHT + 4 + (
+      height += 4 + (
         (hash & 3) +
         (hash >> 4 & 3)
       );
@@ -102,7 +102,7 @@ int getCornerHeight (uint32_t hash, uint8_t biome) {
 
     case W_snowy_plains: {
       // Use fewer components with larger ranges to create hills
-      height = TERRAIN_BASE_HEIGHT + (
+      height += (
         (hash & 7) +
         (hash >> 4 & 7)
       );
