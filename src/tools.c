@@ -386,6 +386,8 @@ void makeBlockChange (short x, uint8_t y, short z, uint8_t block) {
   if (x % CHUNK_SIZE < 0) anchor.x --;
   if (z % CHUNK_SIZE < 0) anchor.z --;
   anchor.hash = getChunkHash(anchor.x, anchor.z);
+  anchor.biome = getChunkBiome(anchor.x, anchor.z);
+
   uint8_t is_base_block = block == getTerrainAt(x, y, z, anchor);
 
   // Look for existing block change entries and replace them
