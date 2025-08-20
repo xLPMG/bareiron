@@ -63,32 +63,56 @@ ssize_t recv_all (int client_fd, void *buf, size_t n, uint8_t require_first) {
   return total; // got exactly n bytes
 }
 
+ssize_t send_all (int fd, const void *buf, size_t len) {
+  const uint8_t *p = (const uint8_t *)buf;
+  size_t sent = 0;
+
+  while (sent < len) {
+    ssize_t n = send(fd, p + sent, len - sent, MSG_NOSIGNAL);
+    if (n > 0) {
+      sent += (size_t)n;
+      continue;
+    }
+    if (n == 0) {
+      errno = ECONNRESET;
+      return -1;
+    }
+    if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {
+      wdt_reset();
+      continue;
+    }
+    return -1;
+  }
+
+  return 0;
+}
+
 ssize_t writeByte (int client_fd, uint8_t byte) {
-  return send(client_fd, &byte, 1, 0);
+  return send_all(client_fd, &byte, 1);
 }
 ssize_t writeUint16 (int client_fd, uint16_t num) {
   uint16_t be = htons(num);
-  return send(client_fd, &be, sizeof(be), 0);
+  return send_all(client_fd, &be, sizeof(be));
 }
 ssize_t writeUint32 (int client_fd, uint32_t num) {
   uint32_t be = htonl(num);
-  return send(client_fd, &be, sizeof(be), 0);
+  return send_all(client_fd, &be, sizeof(be));
 }
 ssize_t writeUint64 (int client_fd, uint64_t num) {
   uint64_t be = htonll(num);
-  return send(client_fd, &be, sizeof(be), 0);
+  return send_all(client_fd, &be, sizeof(be));
 }
 ssize_t writeFloat (int client_fd, float num) {
   uint32_t bits;
   memcpy(&bits, &num, sizeof(bits));
   bits = htonl(bits);
-  return send(client_fd, &bits, sizeof(bits), 0);
+  return send_all(client_fd, &bits, sizeof(bits));
 }
 ssize_t writeDouble (int client_fd, double num) {
   uint64_t bits;
   memcpy(&bits, &num, sizeof(bits));
   bits = htonll(bits);
-  return send(client_fd, &bits, sizeof(bits), 0);
+  return send_all(client_fd, &bits, sizeof(bits));
 }
 
 uint8_t readByte (int client_fd) {

@@ -60,9 +60,9 @@ int sc_loginSuccess (int client_fd, uint8_t *uuid, char *name) {
   uint8_t name_length = strlen(name);
   writeVarInt(client_fd, 1 + 16 + sizeVarInt(name_length) + name_length + 1);
   writeVarInt(client_fd, 0x02);
-  send(client_fd, uuid, 16, 0);
+  send_all(client_fd, uuid, 16);
   writeVarInt(client_fd, name_length);
-  send(client_fd, name, name_length, 0);
+  send_all(client_fd, name, name_length);
   writeVarInt(client_fd, 0);
 
   return 0;
@@ -115,7 +115,7 @@ int sc_knownPacks (int client_fd) {
     0x2e, 0x38
   };
   writeVarInt(client_fd, 24);
-  send(client_fd, &known_packs, 24, 0);
+  send_all(client_fd, &known_packs, 24);
   return 0;
 }
 
@@ -148,14 +148,14 @@ int sc_loginPlay (int client_fd) {
   writeByte(client_fd, 0x2B);
   // entity id
   uint32_t entity_id = getClientIndex(client_fd);
-  send(client_fd, &entity_id, 4, 0);
+  send_all(client_fd, &entity_id, 4);
   // hardcore
   writeByte(client_fd, false);
   // dimensions
   writeVarInt(client_fd, 1);
   writeVarInt(client_fd, 19);
   const char *dimension = "minecraft:overworld";
-  send(client_fd, dimension, 19, 0);
+  send_all(client_fd, dimension, 19);
   // maxplayers
   writeVarInt(client_fd, MAX_PLAYERS);
   // view distance
@@ -172,7 +172,7 @@ int sc_loginPlay (int client_fd) {
   writeVarInt(client_fd, 0);
   // dimension name
   writeVarInt(client_fd, 19);
-  send(client_fd, dimension, 19, 0);
+  send_all(client_fd, dimension, 19);
   // hashed seed
   writeUint64(client_fd, 0x0123456789ABCDEF);
   // gamemode
@@ -318,10 +318,10 @@ int sc_chunkDataAndUpdateLight (int client_fd, int _x, int _z) {
     writeByte(client_fd, 8); // bits per entry
     writeVarInt(client_fd, 256); // block palette length
     // block palette as varint buffer
-    send(client_fd, network_block_palette, sizeof(network_block_palette), 0);
+    send_all(client_fd, network_block_palette, sizeof(network_block_palette));
     // chunk section buffer
     buildChunkSection(x, y, z);
-    send(client_fd, chunk_section, 4096, 0);
+    send_all(client_fd, chunk_section, 4096);
     // biome data
     writeByte(client_fd, 0); // bits per entry
     writeByte(client_fd, W_plains); // biome palette
@@ -355,11 +355,11 @@ int sc_chunkDataAndUpdateLight (int client_fd, int _x, int _z) {
   for (int i = 2048; i < 4096; i ++) chunk_section[i] = 0;
   for (int i = 0; i < 8; i ++) {
     writeVarInt(client_fd, 2048);
-    send(client_fd, chunk_section + 2048, 2048, 0);
+    send_all(client_fd, chunk_section + 2048, 2048);
   }
   for (int i = 0; i < 18; i ++) {
     writeVarInt(client_fd, 2048);
-    send(client_fd, chunk_section, 2048, 0);
+    send_all(client_fd, chunk_section, 2048);
   }
   // don't send block light
   writeVarInt(client_fd, 0);
@@ -472,7 +472,7 @@ int sc_openScreen (int client_fd, uint8_t window, const char *title, uint16_t le
 
   writeByte(client_fd, 8); // string nbt tag
   writeUint16(client_fd, length); // string length
-  send(client_fd, title, length, 0);
+  send_all(client_fd, title, length);
 
   return 0;
 }
@@ -716,10 +716,10 @@ int sc_playerInfoUpdateAddPlayer (int client_fd, PlayerData player) {
   writeByte(client_fd, 1); // Player count (1 per packet)
 
   // Player UUID
-  send(client_fd, player.uuid, 16, 0);
+  send_all(client_fd, player.uuid, 16);
   // Player name
   writeByte(client_fd, strlen(player.name));
-  send(client_fd, player.name, strlen(player.name), 0);
+  send_all(client_fd, player.name, strlen(player.name));
   // Properties (don't send any)
   writeByte(client_fd, 0);
 
@@ -738,7 +738,7 @@ int sc_spawnEntity (
   writeByte(client_fd, 0x01);
 
   writeVarInt(client_fd, id); // Entity ID
-  send(client_fd, uuid, 16, 0); // Entity UUID
+  send_all(client_fd, uuid, 16); // Entity UUID
   writeVarInt(client_fd, type); // Entity type
 
   // Position
@@ -837,10 +837,10 @@ int sc_updateEntityRotation (int client_fd, int id, uint8_t yaw, uint8_t pitch) 
 int sc_registries (int client_fd) {
 
   printf("Sending Registries\n\n");
-  send(client_fd, registries_bin, sizeof(registries_bin), 0);
+  send_all(client_fd, registries_bin, sizeof(registries_bin));
 
   printf("Sending Tags\n\n");
-  send(client_fd, tags_bin, sizeof(tags_bin), 0);
+  send_all(client_fd, tags_bin, sizeof(tags_bin));
 
   return 0;
 
