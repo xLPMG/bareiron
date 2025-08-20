@@ -16,6 +16,7 @@
   #include "esp_wifi.h"
   #include "esp_event.h"
   #include "esp_task_wdt.h"
+  #include "esp_timer.h"
   #include "lwip/sockets.h"
   #include "lwip/netdb.h"
 #else
@@ -97,7 +98,7 @@ void handlePacket (int client_fd, int length, int packet_id) {
 
         sc_synchronizePlayerPosition(client_fd, spawn_x, spawn_y, spawn_z, spawn_yaw, spawn_pitch);
 
-        wdt_reset();
+        task_yield();
 
         for (uint8_t i = 0; i < 41; i ++) {
           sc_setContainerSlot(client_fd, 0, serverSlotToClientSlot(0, i), player->inventory_count[i], player->inventory_items[i]);
@@ -115,7 +116,7 @@ void handlePacket (int client_fd, int length, int packet_id) {
         sc_startWaitingForChunks(client_fd);
         sc_setCenterChunk(client_fd, _x, _z);
 
-        wdt_reset();
+        task_yield();
 
         // Send spawn chunk first
         sc_chunkDataAndUpdateLight(client_fd, _x, _z);
@@ -128,7 +129,7 @@ void handlePacket (int client_fd, int length, int packet_id) {
         // Re-synchronize player position after all chunks have been sent
         sc_synchronizePlayerPosition(client_fd, spawn_x, spawn_y, spawn_z, spawn_yaw, spawn_pitch);
 
-        wdt_reset();
+        task_yield();
 
         // Register all existing players and spawn their entities, and broadcast
         // information about the joining player to all existing players.
@@ -398,7 +399,8 @@ int main () {
    * client connection.
    */
   while (true) {
-    if (client_count == 0) { wdt_reset(); }
+    // Check if it's time to yield to the idle task
+    task_yield();
 
     // Attempt to accept a new connection
     for (int i = 0; i < MAX_PLAYERS; i ++) {
@@ -473,8 +475,6 @@ int main () {
       disconnectClient(&clients[client_index], 4);
       continue;
     }
-    // Reset watchdog and yield between packets
-    wdt_reset();
 
   }
 
@@ -486,7 +486,6 @@ int main () {
 #ifdef ESP_PLATFORM
 
 void bareiron_main (void *pvParameters) {
-  esp_task_wdt_add(NULL);
   main();
   vTaskDelete(NULL);
 }
@@ -528,6 +527,7 @@ void wifi_init () {
 }
 
 void app_main () {
+  esp_timer_early_init();
   wifi_init();
 }
 

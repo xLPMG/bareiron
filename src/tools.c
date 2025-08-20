@@ -47,8 +47,7 @@ ssize_t recv_all (int client_fd, void *buf, size_t n, uint8_t require_first) {
     ssize_t r = recv(client_fd, p + total, n - total, 0);
     if (r < 0) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
-        // spin until data arrives
-        wdt_reset();
+        task_yield();
         continue;
       } else {
         return -1; // real error
@@ -78,7 +77,7 @@ ssize_t send_all (int client_fd, const void *buf, size_t len) {
       return -1;
     }
     if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {
-      wdt_reset();
+      task_yield();
       continue;
     }
     return -1;

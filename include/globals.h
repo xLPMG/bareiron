@@ -7,13 +7,9 @@
 #ifdef ESP_PLATFORM
   #define WIFI_SSID "your-ssid"
   #define WIFI_PASS "your-password"
-  #include "esp_task_wdt.h"
-  #define wdt_reset();    \
-    esp_task_wdt_reset(); \
-    vTaskDelay(1);        \
-    esp_task_wdt_reset();
+  void task_yield ();
 #else
-  #define wdt_reset();
+  #define task_yield();
 #endif
 
 #define true 1

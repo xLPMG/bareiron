@@ -308,8 +308,8 @@ int sc_chunkDataAndUpdateLight (int client_fd, int _x, int _z) {
     writeByte(client_fd, 0); // biome bits
     writeByte(client_fd, 0); // biome palette
   }
-  // reset watchdog and yield
-  wdt_reset();
+  // yield to idle task
+  task_yield();
 
   // send chunk sections
   for (int i = 0; i < 20; i ++) {
@@ -325,8 +325,8 @@ int sc_chunkDataAndUpdateLight (int client_fd, int _x, int _z) {
     // biome data
     writeByte(client_fd, 0); // bits per entry
     writeByte(client_fd, W_plains); // biome palette
-    // reset watchdog and yield
-    wdt_reset();
+    // yield to idle task
+    task_yield();
   }
 
   // send 8 chunk sections (up to Y=192) with no blocks
@@ -337,8 +337,8 @@ int sc_chunkDataAndUpdateLight (int client_fd, int _x, int _z) {
     writeByte(client_fd, 0); // biome bits
     writeByte(client_fd, 0); // biome palette
   }
-  // reset watchdog and yield
-  wdt_reset();
+  // yield to idle task
+  task_yield();
 
   writeVarInt(client_fd, 0); // omit block entities
 
