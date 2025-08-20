@@ -4,16 +4,54 @@ const path = require("path");
 // Overrides for block-to-item conversion
 const blockToItemOverrides = {
   "grass_block": "dirt",
+  "snowy_grass_block": "dirt",
   "stone": "cobblestone",
   "diamond_ore": "diamond",
   "gold_ore": "raw_gold",
   "redstone_ore": "redstone",
   "iron_ore": "raw_iron",
-  "coal_ore": "coal"
+  "coal_ore": "coal",
+  "snow": "snowball",
+  "dead_bush": "stick"
 };
 
+// Blacklisted block name strings
+const blockBlacklist = [
+  "spruce_",
+  "birch_",
+  "jungle_",
+  "acacia_",
+  "dark_oak_",
+  "mangrove_",
+  "cherry_",
+  "pale_oak_",
+  "crimson_",
+  "warped_",
+  "bamboo_",
+  "deepslate",
+  "infested_",
+  "stained_",
+  "_terracotta",
+  "_head"
+];
+
+// Whitelisted blocks, i.e. guaranteed to be included
+const blockWhitelist = [
+  "air",
+  "water",
+  "lava",
+  "snowy_grass_block",
+  "mud",
+  "moss_carpet"
+];
+
+// Currently, only 4 biome types are supported, excluding "beach"
 const biomes = [
-  "plains"
+  "plains",
+  "mangrove_swamp",
+  "desert",
+  "snowy_plains",
+  "beach"
 ];
 
 // Extract item and block data from registry dump
@@ -46,7 +84,22 @@ async function extractItemsAndBlocks () {
   for (const entry of sortedBlocks) {
     const defaultState = entry[1].states.find(c => c.default);
     if (!defaultState) continue;
+    // Check if a part of this block's name is in the blacklist
+    let found = false;
+    for (const str of blockBlacklist) {
+      if (entry[0].includes(str)) {
+        found = true;
+        break;
+      }
+    }
+    if (found) continue;
+    // Register the block ID
     blocks[entry[0].replace("minecraft:", "")] = defaultState.id;
+    // Include "snowy" variants of blocks as well
+    if ("properties" in defaultState && "snowy" in defaultState.properties) {
+      const snowyState = entry[1].states.find(c => c.properties.snowy);
+      blocks["snowy_" + entry[0].replace("minecraft:", "")] = snowyState.id;
+    }
   }
 
   for (const item in itemSource) {
@@ -60,13 +113,22 @@ async function extractItemsAndBlocks () {
    * items, outside of some exceptions.
    */
   const palette = {};
-  const exceptions = [ "air", "water", "lava" ];
 
   // While we're at it, map block IDs to item IDs
   const mapping = [], mappingWithOverrides = [];
 
+  // Handle explicitly whitelisted blocks first
+  for (const block of blockWhitelist) {
+    palette[block] = blocks[block];
+    mapping.push(items[block] || 0);
+    mappingWithOverrides.push(items[blockToItemOverrides[block]] || items[block] || 0);
+    if (mapping.length === 256) break;
+  }
+
+  // Continue adding blocks with matching items
   for (const block in blocks) {
-    if (!(block in items) && !exceptions.includes(block)) continue;
+    if (!(block in items)) continue;
+    if (blockWhitelist.includes(block)) continue;
     palette[block] = blocks[block];
     mapping.push(items[block] || 0);
     mappingWithOverrides.push(items[blockToItemOverrides[block]] || items[block] || 0);
@@ -234,7 +296,7 @@ async function convert () {
 
   const inputPath = __dirname + "/notchian/generated/data/minecraft";
   const outputPath = __dirname + "/src/registries.c";
-  const headerPath = __dirname + "/src/registries.h";
+  const headerPath = __dirname + "/include/registries.h";
 
   const registries = await scanDirectory(inputPath);
   const registryBuffers = [];
@@ -267,6 +329,8 @@ async function convert () {
       "mineable/pickaxe": [
         itemsAndBlocks.blockRegistry["stone"],
         itemsAndBlocks.blockRegistry["cobblestone"],
+        itemsAndBlocks.blockRegistry["sandstone"],
+        itemsAndBlocks.blockRegistry["ice"],
         itemsAndBlocks.blockRegistry["diamond_ore"],
         itemsAndBlocks.blockRegistry["gold_ore"],
         itemsAndBlocks.blockRegistry["redstone_ore"],
@@ -281,7 +345,10 @@ async function convert () {
       ],
       "mineable/shovel": [
         itemsAndBlocks.blockRegistry["grass_block"],
-        itemsAndBlocks.blockRegistry["dirt"]
+        itemsAndBlocks.blockRegistry["dirt"],
+        itemsAndBlocks.blockRegistry["sand"],
+        itemsAndBlocks.blockRegistry["snow"],
+        itemsAndBlocks.blockRegistry["mud"]
       ],
     },
     "item": {
