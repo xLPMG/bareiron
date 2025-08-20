@@ -412,6 +412,7 @@ int sc_blockUpdate (int client_fd, int64_t x, int64_t y, int64_t z, uint8_t bloc
   writeByte(client_fd, 0x08);
   writeUint64(client_fd, ((x & 0x3FFFFFF) << 38) | ((z & 0x3FFFFFF) << 12) | (y & 0xFFF));
   writeVarInt(client_fd, block_palette[block]);
+  return 0;
 }
 
 // S->C Acknowledge Block Change
