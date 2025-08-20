@@ -337,6 +337,16 @@ void disconnectClient (int *client_fd, int cause) {
 
 int main () {
 
+  // Hash the seeds to ensure they're random enough
+  world_seed = splitmix64(world_seed);
+  printf("World seed: ");
+  for (int i = 0; i < 4; i ++) printf("%X", (world_seed >> (8 * i)) & 255);
+
+  rng_seed = splitmix64(rng_seed);
+  printf("\nRNG seed: ");
+  for (int i = 0; i < 4; i ++) printf("%X", (rng_seed >> (8 * i)) & 255);
+  printf("\n\n");
+
   for (int i = 0; i < sizeof(block_changes) / sizeof(BlockChange); i ++) {
     block_changes[i].block = 0xFF;
   }
