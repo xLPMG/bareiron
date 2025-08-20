@@ -424,10 +424,8 @@ void makeBlockChange (short x, uint8_t y, short z, uint8_t block) {
 
 // Returns the result of mining a block, taking into account the block type and tools
 // Probability numbers obtained with this formula: N = floor(P * 32 ^ 2)
-uint16_t getMiningResult (int client_fd, uint8_t block) {
+uint16_t getMiningResult (PlayerData *player, uint8_t block) {
 
-  PlayerData *player;
-  if (getPlayerData(client_fd, &player)) return 0;
   uint16_t held_item = player->inventory_items[player->hotbar];
 
   // In order to avoid storing durability data, items break randomly with
@@ -443,7 +441,7 @@ uint16_t getMiningResult (int client_fd, uint8_t block) {
   ) {
     player->inventory_items[player->hotbar] = 0;
     player->inventory_count[player->hotbar] = 0;
-    sc_setContainerSlot(client_fd, 0, serverSlotToClientSlot(0, player->hotbar), 0, 0);
+    sc_setContainerSlot(player->client_fd, 0, serverSlotToClientSlot(0, player->hotbar), 0, 0);
   }
 
   switch (block) {
@@ -486,5 +484,59 @@ uint16_t getMiningResult (int client_fd, uint8_t block) {
   }
 
   return B_to_I[block];
+
+}
+
+// Checks whether the given block would be mined instantly with the held tool
+uint8_t isInstantlyMined (PlayerData *player, uint8_t block) {
+
+  if (block == B_dead_bush) return true;
+  if (block == B_short_grass) return true;
+
+  uint16_t held_item = player->inventory_items[player->hotbar];
+
+  if (block == B_snow) return (
+    held_item == I_stone_shovel ||
+    held_item == I_iron_shovel ||
+    held_item == I_diamond_shovel ||
+    held_item == I_netherite_shovel ||
+    held_item == I_golden_shovel
+  );
+
+  return false;
+
+}
+
+void handlePlayerAction (PlayerData *player, int action, short x, short y, short z) {
+
+  // In creative, only the "start mining" action is sent
+  // No additional verification is performed, the block is simply removed
+  if (action == 0 && GAMEMODE == 1) {
+    makeBlockChange(x, y, z, 0);
+    return;
+  }
+
+  // Ignore actions not pertaining to mining blocks
+  if (action != 0 && action != 2) return;
+
+  uint8_t block = getBlockAt(x, y, z);
+
+  // If this is a "start mining" packet, the block must be instamine
+  if (action == 0 && !isInstantlyMined(player, block)) return;
+
+  makeBlockChange(x, y, z, 0);
+
+  uint16_t item = getMiningResult(player, block);
+  if (item) givePlayerItem(player, item, 1);
+
+  // Check if any blocks above this should break
+  uint8_t block_above = getBlockAt(x, y + 1, z);
+  if (
+    block_above == B_snow ||
+    block_above == B_moss_carpet ||
+    block_above == B_cactus ||
+    block_above == B_short_grass ||
+    block_above == B_dead_bush
+  ) return handlePlayerAction(player, 2, x, y + 1, z);
 
 }

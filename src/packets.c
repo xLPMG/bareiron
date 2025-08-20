@@ -438,24 +438,10 @@ int cs_playerAction (int client_fd) {
   int sequence = readVarInt(client_fd);
   sc_acknowledgeBlockChange(client_fd, sequence);
 
-  if ((action == 0 && GAMEMODE == 1)) {
-    // block was mined in creative
-    makeBlockChange(x, y, z, 0);
-  } else if (action == 2) {
-    // block was mined in survival
+  PlayerData *player;
+  if (getPlayerData(client_fd, &player)) return 1;
 
-    uint8_t block = getBlockAt(x, y, z);
-    uint16_t item = getMiningResult(client_fd, block);
-
-    makeBlockChange(x, y, z, 0);
-
-    if (item) {
-      PlayerData *player;
-      if (getPlayerData(client_fd, &player)) return 1;
-      givePlayerItem(player, item, 1);
-    }
-
-  }
+  handlePlayerAction(player, action, x, y, z);
 
   return 0;
 
