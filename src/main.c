@@ -257,7 +257,7 @@ void handlePacket (int client_fd, int length, int packet_id) {
         if (found) return;
 
         // Update player's recently visited chunks
-        for (int i = 0; i < VISITED_HISTORY; i ++) {
+        for (int i = 0; i < VISITED_HISTORY - 1; i ++) {
           player->visited_x[i] = player->visited_x[i + 1];
           player->visited_z[i] = player->visited_z[i + 1];
         }
