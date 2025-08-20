@@ -1,3 +1,3 @@
 rm bareiron
-gcc src/*.c -o bareiron
+gcc src/*.c -Iinclude -o bareiron
 ./bareiron

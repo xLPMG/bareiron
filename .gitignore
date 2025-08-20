@@ -2,4 +2,4 @@
 notchian
 bareiron
 src/registries.c
-src/registries.h
+include/registries.h
