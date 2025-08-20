@@ -10,7 +10,8 @@
   #include "esp_task_wdt.h"
   #define wdt_reset();    \
     esp_task_wdt_reset(); \
-    vTaskDelay(1);
+    vTaskDelay(1);        \
+    esp_task_wdt_reset();
 #else
   #define wdt_reset();
 #endif
