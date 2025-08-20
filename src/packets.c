@@ -746,8 +746,8 @@ int sc_spawnEntity (
   writeDouble(client_fd, z);
 
   // Angles
-  writeByte(client_fd, yaw);
   writeByte(client_fd, pitch);
+  writeByte(client_fd, yaw);
   writeByte(client_fd, yaw);
 
   // Data - mostly unused
