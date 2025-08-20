@@ -392,7 +392,7 @@ int main () {
    * client connection.
    */
   while (true) {
-    wdt_reset();
+    if (client_count == 0) { wdt_reset(); }
 
     // Attempt to accept a new connection
     for (int i = 0; i < MAX_PLAYERS; i ++) {
@@ -413,7 +413,7 @@ int main () {
     if (client_index == MAX_PLAYERS) client_index = 0;
     if (clients[client_index] == -1) continue;
 
-    // Handle infrequent periodic events every 10 seconds
+    // Handle infrequent periodic events every few seconds
     clock_gettime(CLOCK_REALTIME, &time_now);
     time_t seconds_since_update = time_now.tv_sec - keepalive_last.tv_sec;
     if (seconds_since_update > 10) {
@@ -467,6 +467,8 @@ int main () {
       disconnectClient(&clients[client_index], 4);
       continue;
     }
+    // Reset watchdog and yield between packets
+    wdt_reset();
 
   }
 

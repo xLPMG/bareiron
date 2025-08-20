@@ -63,12 +63,12 @@ ssize_t recv_all (int client_fd, void *buf, size_t n, uint8_t require_first) {
   return total; // got exactly n bytes
 }
 
-ssize_t send_all (int fd, const void *buf, size_t len) {
+ssize_t send_all (int client_fd, const void *buf, size_t len) {
   const uint8_t *p = (const uint8_t *)buf;
   size_t sent = 0;
 
   while (sent < len) {
-    ssize_t n = send(fd, p + sent, len - sent, MSG_NOSIGNAL);
+    ssize_t n = send(client_fd, p + sent, len - sent, MSG_NOSIGNAL);
     if (n > 0) {
       sent += (size_t)n;
       continue;
