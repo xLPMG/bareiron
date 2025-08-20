@@ -87,7 +87,7 @@ void handlePacket (int client_fd, int length, int packet_id) {
           int _z = 8 / CHUNK_SIZE;
           int rx = 8 % CHUNK_SIZE;
           int rz = 8 % CHUNK_SIZE;
-          spawn_y = getHeightAt(rx, rz, _x, _z, getChunkHash(_x, _z)) + 1;
+          spawn_y = getHeightAt(rx, rz, _x, _z, getChunkHash(_x, _z), getChunkBiome(_x, _z)) + 1;
         } else {
           spawn_x = player->x > 0 ? (float)player->x + 0.5 : (float)player->x - 0.5;
           spawn_y = player->y;
