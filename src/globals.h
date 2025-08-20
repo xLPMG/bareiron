@@ -24,6 +24,10 @@
 // How many visited chunks to "remember"
 // The server will not re-send chunks that the player has recently been in
 #define VISITED_HISTORY 4
+// If defined, scales the frequency at which player movement updates are
+// broadcast based on the amount of players, reducing overhead for higher
+// player counts. For very many players, makes movement look jittery.
+#define SCALE_MOVEMENT_UPDATES_TO_PLAYER_COUNT
 
 #define STATE_NONE 0
 #define STATE_STATUS 1
@@ -38,6 +42,8 @@ extern uint8_t recv_buffer[256];
 extern uint32_t world_seed;
 extern uint32_t rng_seed;
 
+extern uint16_t client_count;
+
 #pragma pack(push, 1)
 
 typedef struct {
@@ -49,12 +55,16 @@ typedef struct {
 
 typedef struct {
   uint8_t uuid[16];
+  char name[16];
   int client_fd;
   short x;
   short y;
   short z;
   short visited_x[VISITED_HISTORY];
   short visited_z[VISITED_HISTORY];
+  #ifdef SCALE_MOVEMENT_UPDATES_TO_PLAYER_COUNT
+    uint16_t packets_since_update;
+  #endif
   int8_t yaw;
   int8_t pitch;
   uint8_t hotbar;

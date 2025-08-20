@@ -36,27 +36,28 @@ int cs_handshake (int client_fd) {
 }
 
 // C->S Login Start
-// Leaves player name and UUID at indexes 0 and 17 of recv_buffer, respectively
-int cs_loginStart (int client_fd) {
+int cs_loginStart (int client_fd, uint8_t *uuid, char *name) {
   printf("Received Login Start:\n");
 
   readString(client_fd);
   if (recv_count == -1) return 1;
-  printf("  Player name: %s\n", recv_buffer);
-  recv_count = recv_all(client_fd, recv_buffer + 17, 16, false);
+  memcpy(name, recv_buffer, strlen((char *)recv_buffer) + 1);
+  printf("  Player name: %s\n", name);
+  recv_count = recv_all(client_fd, recv_buffer, 16, false);
   if (recv_count == -1) return 1;
+  memcpy(uuid, recv_buffer, 16);
   printf("  Player UUID: ");
-  for (int i = 17; i < 33; i ++) printf("%x", recv_buffer[i]);
+  for (int i = 0; i < 16; i ++) printf("%x", uuid[i]);
   printf("\n\n");
 
   return 0;
 }
 
 // S->C Login Success
-int sc_loginSuccess (int client_fd, char *name, char *uuid) {
+int sc_loginSuccess (int client_fd, uint8_t *uuid, char *name) {
   printf("Sending Login Success...\n\n");
 
-  int name_length = strlen(name);
+  uint8_t name_length = strlen(name);
   writeVarInt(client_fd, 1 + 16 + sizeVarInt(name_length) + name_length + 1);
   writeVarInt(client_fd, 0x02);
   send(client_fd, uuid, 16, 0);
@@ -649,6 +650,19 @@ int cs_setPlayerPosition (int client_fd, double *x, double *y, double *z) {
 
 }
 
+// C->S Set Player Rotation
+int cs_setPlayerRotation (int client_fd, float *yaw, float *pitch) {
+
+  *yaw = readFloat(client_fd);
+  *pitch = readFloat(client_fd);
+
+  // ignore flags
+  readByte(client_fd);
+
+  return 0;
+
+}
+
 // C->S Set Held Item (serverbound)
 int cs_setHeldItem (int client_fd) {
 
@@ -687,6 +701,133 @@ int cs_closeContainer (int client_fd) {
     uint8_t client_slot = serverSlotToClientSlot(window_id, 41 + i);
     if (client_slot != 255) sc_setContainerSlot(player->client_fd, 0, client_slot, 0, 0);
   }
+
+  return 0;
+}
+
+// S->C Player Info Update, "Add Player" action
+int sc_playerInfoUpdateAddPlayer (int client_fd, PlayerData player) {
+
+  writeVarInt(client_fd, 21 + strlen(player.name)); // Packet length
+  writeByte(client_fd, 0x3F); // Packet ID
+
+  writeByte(client_fd, 0x01); // EnumSet: Add Player
+  writeByte(client_fd, 1); // Player count (1 per packet)
+
+  // Player UUID
+  send(client_fd, player.uuid, 16, 0);
+  // Player name
+  writeByte(client_fd, strlen(player.name));
+  send(client_fd, player.name, strlen(player.name), 0);
+  // Properties (don't send any)
+  writeByte(client_fd, 0);
+
+  return 0;
+}
+
+// S->C Spawn Entity
+int sc_spawnEntity (
+  int client_fd,
+  int id, uint8_t *uuid, int type,
+  double x, double y, double z,
+  uint8_t yaw, uint8_t pitch
+) {
+
+  writeVarInt(client_fd, 51 + sizeVarInt(id) + sizeVarInt(type));
+  writeByte(client_fd, 0x01);
+
+  writeVarInt(client_fd, id); // Entity ID
+  send(client_fd, uuid, 16, 0); // Entity UUID
+  writeVarInt(client_fd, type); // Entity type
+
+  // Position
+  writeDouble(client_fd, x);
+  writeDouble(client_fd, y);
+  writeDouble(client_fd, z);
+
+  // Angles
+  writeByte(client_fd, yaw);
+  writeByte(client_fd, pitch);
+  writeByte(client_fd, yaw);
+
+  // Data - mostly unused
+  writeByte(client_fd, 0);
+
+  // Velocity
+  writeUint16(client_fd, 0);
+  writeUint16(client_fd, 0);
+  writeUint16(client_fd, 0);
+
+  return 0;
+}
+
+// S->C Spawn Entity (from PlayerData)
+int sc_spawnEntityPlayer (int client_fd, PlayerData player) {
+  return sc_spawnEntity(
+    client_fd,
+    player.client_fd, player.uuid, 149,
+    player.x > 0 ? (double)player.x + 0.5 : (double)player.x - 0.5,
+    player.y,
+    player.z > 0 ? (double)player.z + 0.5 : (float)player.z - 0.5,
+    player.yaw, player.pitch
+  );
+}
+
+// S->C Teleport Entity
+int sc_teleportEntity (
+  int client_fd, int id,
+  double x, double y, double z,
+  float yaw, float pitch
+) {
+
+  // Packet length and ID
+  writeVarInt(client_fd, 58 + sizeVarInt(id));
+  writeByte(client_fd, 0x1F);
+
+  // Entity ID
+  writeVarInt(client_fd, id);
+  // Position
+  writeDouble(client_fd, x);
+  writeDouble(client_fd, y);
+  writeDouble(client_fd, z);
+  // Velocity
+  writeUint64(client_fd, 0);
+  writeUint64(client_fd, 0);
+  writeUint64(client_fd, 0);
+  // Angles
+  writeFloat(client_fd, yaw);
+  writeFloat(client_fd, pitch);
+  // On ground flag
+  writeByte(client_fd, 1);
+
+  return 0;
+}
+
+int sc_setHeadRotation (int client_fd, int id, uint8_t yaw) {
+
+  // Packet length and ID
+  writeByte(client_fd, 2 + sizeVarInt(id));
+  writeByte(client_fd, 0x4C);
+  // Entity ID
+  writeVarInt(client_fd, id);
+  // Head yaw
+  writeByte(client_fd, yaw);
+
+  return 0;
+}
+
+int sc_updateEntityRotation (int client_fd, int id, uint8_t yaw, uint8_t pitch) {
+
+  // Packet length and ID
+  writeByte(client_fd, 4 + sizeVarInt(id));
+  writeByte(client_fd, 0x31);
+  // Entity ID
+  writeVarInt(client_fd, id);
+  // Angles
+  writeByte(client_fd, yaw);
+  writeByte(client_fd, pitch);
+  // "On ground" flag
+  writeByte(client_fd, 1);
 
   return 0;
 }

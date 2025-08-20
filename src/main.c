@@ -43,9 +43,11 @@ void handlePacket (int client_fd, int length, int packet_id) {
         if (cs_handshake(client_fd)) break;
         return;
       } else if (state == STATE_LOGIN) {
-        if (cs_loginStart(client_fd)) break;
-        if (reservePlayerData(client_fd, (char *)(recv_buffer + 17))) break;
-        if (sc_loginSuccess(client_fd, (char *)recv_buffer, (char *)(recv_buffer + 17))) break;
+        uint8_t uuid[16];
+        char name[16];
+        if (cs_loginStart(client_fd, uuid, name)) break;
+        if (reservePlayerData(client_fd, uuid, name)) break;
+        if (sc_loginSuccess(client_fd, uuid, name)) break;
         return;
       } else if (state == STATE_CONFIGURATION) {
         if (cs_clientInformation(client_fd)) break;
@@ -122,6 +124,17 @@ void handlePacket (int client_fd, int length, int packet_id) {
         // Re-synchronize player position after all chunks have been sent
         sc_synchronizePlayerPosition(client_fd, spawn_x, spawn_y, spawn_z, spawn_yaw, spawn_pitch);
 
+        // Register all existing players and spawn their entities, and broadcast
+        // information about the joining player to all existing players.
+        for (int i = 0; i < MAX_PLAYERS; i ++) {
+          if (player_data[i].client_fd == -1) continue;
+          sc_playerInfoUpdateAddPlayer(client_fd, player_data[i]);
+          if (player_data[i].client_fd == client_fd) continue;
+          sc_playerInfoUpdateAddPlayer(player_data[i].client_fd, *player);
+          sc_spawnEntityPlayer(client_fd, player_data[i]);
+          sc_spawnEntityPlayer(player_data[i].client_fd, *player);
+        }
+
         return;
       }
       break;
@@ -157,6 +170,7 @@ void handlePacket (int client_fd, int length, int packet_id) {
 
     case 0x1D:
     case 0x1E:
+    case 0x1F:
       if (state == STATE_PLAY) {
 
         double x, y, z;
@@ -164,27 +178,63 @@ void handlePacket (int client_fd, int length, int packet_id) {
 
         // Read player position (and rotation)
         if (packet_id == 0x1D) cs_setPlayerPosition(client_fd, &x, &y, &z);
+        else if (packet_id == 0x1F) cs_setPlayerRotation (client_fd, &yaw, &pitch);
         else cs_setPlayerPositionAndRotation(client_fd, &x, &y, &z, &yaw, &pitch);
-        // Cast the values to short to get integer position
-        short cx = x, cy = y, cz = z;
 
         PlayerData *player;
         if (getPlayerData(client_fd, &player)) break;
 
+        // Update rotation in player data (if applicable)
+        if (packet_id != 0x1D) {
+          player->yaw = ((short)(yaw + 540) % 360 - 180) * 127 / 180;
+          player->pitch = pitch / 90.0f * 127.0f;
+        }
+
+        // Broadcast player position to other players
+        #ifdef SCALE_MOVEMENT_UPDATES_TO_PLAYER_COUNT
+          // If applicable, broadcast only every client_count-th movement update
+          uint8_t should_broadcast = false;
+          if (player->packets_since_update++ == client_count) {
+            should_broadcast = true;
+            player->packets_since_update = 0;
+          }
+        #else
+          #define should_broadcast (client_count > 0)
+        #endif
+        if (should_broadcast) {
+          // If the packet had no rotation data, calculate it from player data
+          if (packet_id == 0x1D) {
+            yaw = player->yaw * 180 / 127;
+            pitch = player->pitch * 90 / 127;
+          }
+          // Send current position data to all connected players
+          for (int i = 0; i < MAX_PLAYERS; i ++) {
+            if (player_data[i].client_fd == -1) continue;
+            if (player_data[i].client_fd == client_fd) continue;
+            if (packet_id == 0x1F) {
+              sc_updateEntityRotation(player_data[i].client_fd, client_fd, player->yaw, player->pitch);
+            } else {
+              sc_teleportEntity(player_data[i].client_fd, client_fd, x, y, z, yaw, pitch);
+            }
+            sc_setHeadRotation(player_data[i].client_fd, client_fd, player->yaw);
+          }
+        }
+
+        // Don't continue if all we got was rotation data
+        if (packet_id == 0x1F) return;
+
+        // Cast the values to short to get integer position
+        short cx = x, cy = y, cz = z;
         // Determine the player's chunk coordinates
         short _x = (cx < 0 ? cx - 16 : cx) / 16, _z = (cz < 0 ? cz - 16 : cz) / 16;
         // Calculate distance between previous and current chunk coordinates
         short dx = _x - (player->x < 0 ? player->x - 16 : player->x) / 16;
         short dz = _z - (player->z < 0 ? player->z - 16 : player->z) / 16;
 
-        // Update position (and rotation) in player data
+        // Update position in player data
         player->x = cx;
         player->y = cy;
         player->z = cz;
-        if (packet_id == 0x1E) {
-          player->yaw = ((short)(yaw + 540) % 360 - 180) * 127 / 180;
-          player->pitch = pitch / 90.0f * 127.0f;
-        }
 
         // Exit early if no chunk borders were crossed
         if (dx == 0 && dz == 0) return;
@@ -269,6 +319,8 @@ void handlePacket (int client_fd, int length, int packet_id) {
 }
 
 void disconnectClient (int *client_fd, int cause) {
+  if (*client_fd == -1) return;
+  client_count --;
   setClientState(*client_fd, STATE_NONE);
   clearPlayerFD(*client_fd);
   close(*client_fd);
@@ -290,6 +342,7 @@ int main () {
   for (int i = 0; i < MAX_PLAYERS; i ++) {
     clients[i] = -1;
     client_states[i * 2] = -1;
+    player_data[i].client_fd = -1;
   }
 
   // Create socket
@@ -350,6 +403,7 @@ int main () {
         printf("New client, fd: %d\n", clients[i]);
         int flags = fcntl(clients[i], F_GETFL, 0);
         fcntl(clients[i], F_SETFL, flags | O_NONBLOCK);
+        client_count ++;
       }
       break;
     }

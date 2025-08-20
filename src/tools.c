@@ -195,11 +195,12 @@ int getClientIndex (int client_fd) {
   return -1;
 }
 
-int reservePlayerData (int client_fd, char *uuid) {
+int reservePlayerData (int client_fd, uint8_t *uuid, char *name) {
 
   for (int i = 0; i < MAX_PLAYERS; i ++) {
     if (memcmp(player_data[i].uuid, uuid, 16) == 0) {
       player_data[i].client_fd = client_fd;
+      memcpy(player_data[i].name, name, 16);
       return 0;
     }
     uint8_t empty = true;
@@ -212,6 +213,7 @@ int reservePlayerData (int client_fd, char *uuid) {
     if (empty) {
       player_data[i].client_fd = client_fd;
       memcpy(player_data[i].uuid, uuid, 16);
+      memcpy(player_data[i].name, name, 16);
       player_data[i].y = -32767;
       return 0;
     }
@@ -234,7 +236,7 @@ int getPlayerData (int client_fd, PlayerData **output) {
 void clearPlayerFD (int client_fd) {
   for (int i = 0; i < MAX_PLAYERS; i ++) {
     if (player_data[i].client_fd == client_fd) {
-      player_data[i].client_fd = 0;
+      player_data[i].client_fd = -1;
       return;
     }
   }
