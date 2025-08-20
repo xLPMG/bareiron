@@ -320,11 +320,11 @@ int sc_chunkDataAndUpdateLight (int client_fd, int _x, int _z) {
     // block palette as varint buffer
     send_all(client_fd, network_block_palette, sizeof(network_block_palette));
     // chunk section buffer
-    buildChunkSection(x, y, z);
+    uint8_t biome = buildChunkSection(x, y, z);
     send_all(client_fd, chunk_section, 4096);
     // biome data
     writeByte(client_fd, 0); // bits per entry
-    writeByte(client_fd, W_plains); // biome palette
+    writeByte(client_fd, biome); // biome palette
     // yield to idle task
     task_yield();
   }

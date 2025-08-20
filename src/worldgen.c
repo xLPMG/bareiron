@@ -326,7 +326,9 @@ uint8_t getBlockAt (int x, int y, int z) {
 uint8_t chunk_section[4096];
 ChunkAnchor chunk_anchors[256 / (CHUNK_SIZE * CHUNK_SIZE)];
 
-void buildChunkSection (int cx, int cy, int cz) {
+// Builds a 16x16x16 chunk of blocks and writes it to `chunk_section`
+// Returns the biome at the origin corner of the chunk
+uint8_t buildChunkSection (int cx, int cy, int cz) {
 
   // Precompute the hashes and anchors for each minichunk
   int anchor_index = 0;
@@ -382,5 +384,7 @@ void buildChunkSection (int cx, int cy, int cz) {
       chunk_section[index] = block_changes[i].block;
     }
   }
+
+  return chunk_anchors[0].biome;
 
 }

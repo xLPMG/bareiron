@@ -28,6 +28,6 @@ uint8_t getTerrainAt (int x, int y, int z, ChunkAnchor anchor);
 uint8_t getBlockAt (int x, int y, int z);
 
 extern uint8_t chunk_section[4096];
-void buildChunkSection (int x, int y, int z);
+uint8_t buildChunkSection (int cx, int cy, int cz);
 
 #endif
