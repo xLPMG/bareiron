@@ -6,9 +6,14 @@
 #ifdef ESP_PLATFORM
   #include "lwip/sockets.h"
   #include "lwip/netdb.h"
+  #include "esp_timer.h"
 #else
   #include <arpa/inet.h>
   #include <unistd.h>
+  #include <time.h>
+  #ifndef CLOCK_MONOTONIC
+    #define CLOCK_MONOTONIC 1
+  #endif
 #endif
 
 #include "globals.h"
@@ -183,6 +188,14 @@ uint64_t splitmix64 (uint64_t state) {
   z = (z ^ (z >> 27)) * 0x94d049bb133111eb;
   return z ^ (z >> 31);
 }
+
+#ifndef ESP_PLATFORM
+int64_t get_program_time () {
+  struct timespec ts;
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (int64_t)ts.tv_sec * 1000000LL + ts.tv_nsec / 1000LL;
+}
+#endif
 
 int client_states[MAX_PLAYERS * 2];
 
@@ -379,11 +392,7 @@ void spawnPlayer (PlayerData *player) {
 
   if (player->y == -32767) { // Is this a new player?
     // Determine spawning Y coordinate based on terrain height
-    int _x = 8 / CHUNK_SIZE;
-    int _z = 8 / CHUNK_SIZE;
-    int rx = 8 % CHUNK_SIZE;
-    int rz = 8 % CHUNK_SIZE;
-    spawn_y = getHeightAt(rx, rz, _x, _z, getChunkHash(_x, _z), getChunkBiome(_x, _z)) + 1;
+    spawn_y = getHeightAt(8, 8) + 1;
   } else { // Not a new player
     // Calculate spawn position from player data
     spawn_x = player->x > 0 ? (float)player->x + 0.5 : (float)player->x - 0.5;
@@ -660,6 +669,113 @@ void handlePlayerAction (PlayerData *player, int action, short x, short y, short
     // Select the next block in the column
     y_offset ++;
     block_above = getBlockAt(x, y + y_offset, z);
+  }
+
+}
+
+void spawnMob (uint8_t type, short x, uint8_t y, short z) {
+
+  for (int i = 0; i < MAX_MOBS; i ++) {
+    // Look for type 0 (unallocated)
+    if (mob_data[i].type != 0) continue;
+
+    // Assign it the input parameters
+    mob_data[i].type = type;
+    mob_data[i].x = x;
+    mob_data[i].y = y;
+    mob_data[i].z = z;
+
+    // Broadcast entity creation to all players
+    for (int j = 0; j < MAX_PLAYERS; j ++) {
+      if (player_data[j].client_fd == -1) continue;
+      sc_spawnEntity(
+        player_data[j].client_fd,
+        65536 + i, // Try to avoid conflict with client file descriptors
+        recv_buffer, // The UUID doesn't matter, feed it garbage
+        type, x, y, z,
+        // Face opposite of the player, as if looking at them when spawning
+        (player_data[j].yaw + 127) & 255, 0
+      );
+    }
+
+    break;
+  }
+
+}
+
+// Simulates events scheduled for regular intervals
+// Takes the time since the last tick in microseconds as the only arguemnt
+void handleServerTick (int64_t time_since_last_tick) {
+
+  // Send Keep Alive and Update Time packets to all in-game clients
+  world_time += 20 * time_since_last_tick / 1000000;
+  for (int i = 0; i < MAX_PLAYERS; i ++) {
+    if (player_data[i].client_fd == -1) continue;
+    sc_keepAlive(player_data[i].client_fd);
+    sc_updateTime(player_data[i].client_fd, world_time);
+  }
+
+  /**
+   * If the RNG seed ever hits 0, it'll never generate anything
+   * else. This is because the fast_rand function uses a simple
+   * XORshift. This isn't a common concern, so we only check for
+   * this periodically. If it does become zero, we reset it to
+   * the world seed as a good-enough fallback.
+   */
+  if (rng_seed == 0) rng_seed = world_seed;
+
+  // Tick mob behavior
+  for (int i = 0; i < MAX_MOBS; i ++) {
+    if (mob_data[i].type == 0) continue;
+
+    uint32_t r = fast_rand();
+
+    // Skip 50% of ticks randomly
+    if (r & 1) continue;
+
+    // Move by one block on the X or Z axis
+    // Yaw is set to face in the direction of motion
+    short new_x = mob_data[i].x, new_z = mob_data[i].z;
+    uint8_t yaw;
+    if ((r >> 2) & 1) {
+      if ((r >> 1) & 1) { new_x += 1; yaw = 192; }
+      else { new_x -= 1; yaw = 64; }
+    } else {
+      if ((r >> 1) & 1) { new_z += 1; yaw = 0; }
+      else { new_z -= 1; yaw = 128; }
+    }
+    // Vary the yaw angle to look just a little less robotic
+    yaw += ((r >> 6) & 15) - 8;
+
+    // Check if the block we're moving into is passable:
+    //   if yes, and the block below is solid, keep the same Y level;
+    //   if yes, but the block below isn't solid, drop down one block;
+    //   if not, go up by up to one block;
+    //   if going up isn't possible, skip this iteration.
+    uint8_t new_y = mob_data[i].y;
+    uint8_t block = getBlockAt(new_x, new_y, new_z);
+    if (block != B_air) {
+      if (getBlockAt(new_x, new_y + 1, new_z) == B_air) new_y += 1;
+      else continue;
+    } else if (getBlockAt(new_x, new_y - 1, new_z) == B_air) new_y -= 1;
+
+    // Store new mob position
+    mob_data[i].x = new_x;
+    mob_data[i].y = new_y;
+    mob_data[i].z = new_z;
+
+    // Broadcast relevant entity movement packets
+    for (int j = 0; j < MAX_PLAYERS; j ++) {
+      if (player_data[j].client_fd == -1) continue;
+      int entity_id = 65536 + i;
+      sc_teleportEntity (
+        player_data[j].client_fd, entity_id,
+        (double)new_x + 0.5, new_y, (double)new_z + 0.5,
+        yaw * 360 / 256, 0
+      );
+      sc_setHeadRotation(player_data[j].client_fd, entity_id, yaw);
+    }
+
   }
 
 }

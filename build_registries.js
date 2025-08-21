@@ -308,9 +308,13 @@ async function convert () {
     }
     if (registry.endsWith("variant")) {
       // The mob "variants" only require one valid variant to be accepted
-      // Send the shortest one to save memory
-      const shortest = registries[registry].sort((a, b) => a.length - b.length)[0];
-      registryBuffers.push(serializeRegistry(registry, [shortest]));
+      // Send "temperate" if available, otherwise shortest string to save memory
+      if (registries[registry].includes("temperate")) {
+        registryBuffers.push(serializeRegistry(registry, ["temperate"]));
+      } else {
+        const shortest = registries[registry].sort((a, b) => a.length - b.length)[0];
+        registryBuffers.push(serializeRegistry(registry, [shortest]));
+      }
     } else {
       registryBuffers.push(serializeRegistry(registry, registries[registry]));
     }

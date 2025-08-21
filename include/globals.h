@@ -15,10 +15,19 @@
 #define true 1
 #define false 0
 
+// TCP port, Minecraft's default is 25565
 #define PORT 25565
+// How many players to keep in memory, NOT the amount of concurrent players
+// Even when offline, players who have logged on before take up a slot
 #define MAX_PLAYERS 16
+// How many mobs to allocate memory for
+#define MAX_MOBS (MAX_PLAYERS)
+// Server game mode: 0 - survival; 1 - creative; 2 - adventure; 3 - spectator
 #define GAMEMODE 0
+// Max render distance, determines how many chunks to send
 #define VIEW_DISTANCE 2
+// Time between server ticks in microseconds (default = 2s)
+#define TIME_BETWEEN_TICKS 2000000
 // How many visited chunks to "remember"
 // The server will not re-send chunks that the player has recently been in
 #define VISITED_HISTORY 4
@@ -77,11 +86,20 @@ typedef struct {
   uint8_t craft_count[9];
 } PlayerData;
 
+typedef struct {
+  uint8_t type;
+  short x;
+  uint8_t y;
+  short z;
+} MobData;
+
 #pragma pack(pop)
 
 extern BlockChange block_changes[20000];
 extern int block_changes_count;
 
 extern PlayerData player_data[MAX_PLAYERS];
+
+extern MobData mob_data[MAX_MOBS];
 
 #endif

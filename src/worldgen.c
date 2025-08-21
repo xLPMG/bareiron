@@ -119,7 +119,7 @@ int interpolate (int a, int b, int c, int d, int x, int z) {
   return (top * (CHUNK_SIZE - z) + bottom * z) / (CHUNK_SIZE * CHUNK_SIZE);
 }
 
-int getHeightAt (int rx, int rz, int _x, int _z, uint32_t chunk_hash, uint8_t biome) {
+int getHeightAtFromHash (int rx, int rz, int _x, int _z, uint32_t chunk_hash, uint8_t biome) {
 
   if (rx == 0 && rz == 0) {
     int height = getCornerHeight(chunk_hash, biome);
@@ -135,6 +135,19 @@ int getHeightAt (int rx, int rz, int _x, int _z, uint32_t chunk_hash, uint8_t bi
 
 }
 
+int getHeightAt (int x, int z) {
+
+  int _x = div_floor(x, CHUNK_SIZE);
+  int _z = div_floor(z, CHUNK_SIZE);
+  int rx = mod_abs(x, CHUNK_SIZE);
+  int rz = mod_abs(z, CHUNK_SIZE);
+  uint32_t chunk_hash = getChunkHash(_x, _z);
+  uint8_t biome = getChunkBiome(_x, _z);
+
+  return getHeightAtFromHash(rx, rz, _x, _z, chunk_hash, biome);
+
+}
+
 uint8_t getTerrainAt (int x, int y, int z, ChunkAnchor anchor) {
 
   if (y > 80) return B_air;
@@ -144,7 +157,7 @@ uint8_t getTerrainAt (int x, int y, int z, ChunkAnchor anchor) {
   if (rx < 0) rx += CHUNK_SIZE;
   if (rz < 0) rz += CHUNK_SIZE;
 
-  int height = getHeightAt(rx, rz, anchor.x, anchor.z, anchor.hash, anchor.biome);
+  int height = getHeightAtFromHash(rx, rz, anchor.x, anchor.z, anchor.hash, anchor.biome);
 
   if (y < 64 || y < height) goto skip_feature;
 
@@ -170,7 +183,7 @@ uint8_t getTerrainAt (int x, int y, int z, ChunkAnchor anchor) {
   switch (anchor.biome) {
     case W_plains: { // Generate trees in the plains biome
 
-      uint8_t feature_y = getHeightAt(
+      uint8_t feature_y = getHeightAtFromHash(
         feature_x < 0 ? feature_x % CHUNK_SIZE + CHUNK_SIZE : feature_x % CHUNK_SIZE,
         feature_z < 0 ? feature_z % CHUNK_SIZE + CHUNK_SIZE : feature_z % CHUNK_SIZE,
         anchor.x, anchor.z, anchor.hash, anchor.biome

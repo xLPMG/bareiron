@@ -99,6 +99,17 @@ void handlePacket (int client_fd, int length, int packet_id) {
           sc_spawnEntityPlayer(player_data[i].client_fd, *player);
         }
 
+        // Send information about all other entities (mobs)
+        // For more info on the arguments, see the spawnMob function
+        for (int i = 0; i < MAX_MOBS; i ++) {
+          if (mob_data[i].type == 0) continue;
+          sc_spawnEntity(
+            client_fd, 65536 + i, recv_buffer,
+            mob_data[i].type, mob_data[i].x, mob_data[i].y, mob_data[i].z,
+            0, 0
+          );
+        }
+
         return;
       }
       break;
@@ -255,6 +266,16 @@ void handlePacket (int client_fd, int length, int packet_id) {
         clock_t start, end;
         start = clock();
 
+        uint32_t r = fast_rand();
+        if ((r & 3) == 0) {
+          short mob_x = (_x + dx * VIEW_DISTANCE) * 16 + ((r >> 4) & 15);
+          short mob_z = (_z + dz * VIEW_DISTANCE) * 16 + ((r >> 8) & 15);
+          uint8_t mob_y = getHeightAt(mob_x, mob_z) + 1;
+          if (getBlockAt(mob_x, mob_y, mob_z) == B_air) {
+            spawnMob(95, mob_x, mob_y, mob_z);
+          }
+        }
+
         while (dx != 0) {
           sc_chunkDataAndUpdateLight(client_fd, _x + dx * VIEW_DISTANCE, _z);
           count ++;
@@ -387,11 +408,8 @@ int main () {
   int flags = fcntl(server_fd, F_GETFL, 0);
   fcntl(server_fd, F_SETFL, flags | O_NONBLOCK);
 
-  // Track client keep-alives
-  struct timespec time_now;
-  struct timespec keepalive_last;
-  clock_gettime(CLOCK_REALTIME, &time_now);
-  clock_gettime(CLOCK_REALTIME, &keepalive_last);
+  // Track time of last server tick
+  int64_t last_tick_time = get_program_time();
 
   /**
    * Cycles through all connected clients, handling one packet at a time
@@ -421,28 +439,11 @@ int main () {
     if (client_index == MAX_PLAYERS) client_index = 0;
     if (clients[client_index] == -1) continue;
 
-    // Handle infrequent periodic events every few seconds
-    clock_gettime(CLOCK_REALTIME, &time_now);
-    time_t seconds_since_update = time_now.tv_sec - keepalive_last.tv_sec;
-    if (seconds_since_update > 10) {
-      // Send Keep Alive and Update Time packets to all in-game clients
-      world_time += 20 * seconds_since_update;
-      for (int i = 0; i < MAX_PLAYERS; i ++) {
-        if (clients[i] == -1) continue;
-        if (getClientState(clients[i]) != STATE_PLAY) continue;
-        sc_keepAlive(clients[i]);
-        sc_updateTime(clients[i], world_time);
-      }
-      // Reset keep-alive timer
-      clock_gettime(CLOCK_REALTIME, &keepalive_last);
-      /**
-       * If the RNG seed ever hits 0, it'll never generate anything
-       * else. This is because the fast_rand function uses a simple
-       * XORshift. This isn't a common concern, so we only check for
-       * this periodically. If it does become zero, we reset it to
-       * the world seed as a good-enough fallback.
-       */
-      if (rng_seed == 0) rng_seed = world_seed;
+    // Handle periodic events (server ticks)
+    int64_t time_since_last_tick = get_program_time() - last_tick_time;
+    if (time_since_last_tick > TIME_BETWEEN_TICKS) {
+      handleServerTick(time_since_last_tick);
+      last_tick_time = get_program_time();
     }
 
     // Handle this individual client

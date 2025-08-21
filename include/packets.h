@@ -34,7 +34,7 @@ int sc_blockUpdate (int client_fd, int64_t x, int64_t y, int64_t z, uint8_t bloc
 int sc_openScreen (int client_fd, uint8_t window, const char *title, uint16_t length);
 int sc_acknowledgeBlockChange (int client_fd, int sequence);
 int sc_playerInfoUpdateAddPlayer (int client_fd, PlayerData player);
-int sc_spawnEntity (int client_fd, int id, uint8_t *uuid, int type, double x, double y, double z, double yaw, double pitch);
+int sc_spawnEntity (int client_fd, int id, uint8_t *uuid, int type, double x, double y, double z, uint8_t yaw, uint8_t pitch);
 int sc_spawnEntityPlayer (int client_fd, PlayerData player);
 int sc_teleportEntity (int client_fd, int id, double x, double y, double z, float yaw, float pitch);
 int sc_setHeadRotation (int client_fd, int id, uint8_t yaw);

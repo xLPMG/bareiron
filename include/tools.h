@@ -10,7 +10,7 @@ inline int mod_abs (int a, int b) {
   return ((a % b) + b) % b;
 }
 inline int div_floor (int a, int b) {
-  return a < 0 ? (a - b) / b : a / b;
+  return a % b < 0 ? (a - b) / b : a / b;
 }
 
 ssize_t recv_all (int client_fd, void *buf, size_t n, uint8_t require_first);
@@ -36,6 +36,12 @@ void readString (int client_fd);
 uint32_t fast_rand ();
 uint64_t splitmix64 (uint64_t state);
 
+#ifdef ESP_PLATFORM
+  #define get_program_time esp_timer_get_time
+#else
+  int64_t get_program_time ();
+#endif
+
 extern int client_states[MAX_PLAYERS * 2];
 
 void setClientState (int client_fd, int new_state);
@@ -60,5 +66,8 @@ uint8_t isColumnBlock (uint8_t block);
 uint16_t getMiningResult (uint16_t held_item, uint8_t block);
 void bumpToolDurability (PlayerData *player);
 void handlePlayerAction (PlayerData *player, int action, short x, short y, short z);
+
+void spawnMob (uint8_t type, short x, uint8_t y, short z);
+void handleServerTick (int64_t time_since_last_tick);
 
 #endif
