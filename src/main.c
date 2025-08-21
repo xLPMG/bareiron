@@ -81,11 +81,18 @@ void handlePacket (int client_fd, int length, int packet_id) {
         // Send full client spawn sequence
         spawnPlayer(player);
 
+        // Prepare join message for broadcast
+        uint8_t player_name_len = strlen(player->name);
+        char join_message[16 + player_name_len];
+        strcpy(join_message, player->name);
+        strcpy(join_message + player_name_len, " joined the game");
+
         // Register all existing players and spawn their entities, and broadcast
         // information about the joining player to all existing players.
         for (int i = 0; i < MAX_PLAYERS; i ++) {
           if (player_data[i].client_fd == -1) continue;
           sc_playerInfoUpdateAddPlayer(client_fd, player_data[i]);
+          sc_systemChat(player_data[i].client_fd, join_message, 16 + player_name_len);
           if (player_data[i].client_fd == client_fd) continue;
           sc_playerInfoUpdateAddPlayer(player_data[i].client_fd, *player);
           sc_spawnEntityPlayer(client_fd, player_data[i]);

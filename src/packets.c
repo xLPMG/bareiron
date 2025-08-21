@@ -901,6 +901,21 @@ int cs_clientStatus (int client_fd) {
   return 0;
 }
 
+int sc_systemChat (int client_fd, char* message, uint16_t len) {
+
+  writeVarInt(client_fd, 5 + len);
+  writeByte(client_fd, 0x72);
+
+  // String NBT tag
+  writeByte(client_fd, 8);
+  writeUint16(client_fd, len);
+  send_all(client_fd, message, len);
+
+  // Is action bar message?
+  writeByte(client_fd, false);
+
+}
+
 // S->C Registry Data (multiple packets) and Update Tags (configuration, multiple packets)
 int sc_registries (int client_fd) {
 

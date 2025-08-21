@@ -41,6 +41,7 @@ int sc_updateEntityRotation (int client_fd, int id, uint8_t yaw, uint8_t pitch);
 int sc_damageEvent (int client_fd, int id, int type);
 int sc_setHealth (int client_fd, uint8_t health, uint8_t food);
 int sc_respawn (int client_fd);
+int sc_systemChat (int client_fd, char* message, uint16_t len);
 int sc_registries (int client_fd);
 
 #endif
