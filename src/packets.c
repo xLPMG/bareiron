@@ -918,7 +918,7 @@ int sc_systemChat (int client_fd, char* message, uint16_t len) {
   return 0;
 }
 
-// C->S Chat
+// C->S Chat Message
 int cs_chat (int client_fd) {
 
   readString(client_fd);
@@ -947,7 +947,7 @@ int cs_chat (int client_fd) {
   // Forward message to all connected players
   for (int i = 0; i < MAX_PLAYERS; i ++) {
     if (player_data[i].client_fd == -1) continue;
-    sc_systemChat(client_fd, (char *)recv_buffer, message_len + name_len + 3);
+    sc_systemChat(player_data[i].client_fd, (char *)recv_buffer, message_len + name_len + 3);
   }
 
   readUint64(client_fd); // Ignore timestamp
