@@ -6,7 +6,12 @@
 
 #include "globals.h"
 
-#define mod_abs(a, b) ((a % b + b) % b)
+inline int mod_abs (int a, int b) {
+  return ((a % b) + b) % b;
+}
+inline int div_floor (int a, int b) {
+  return a < 0 ? (a - b) / b : a / b;
+}
 
 ssize_t recv_all (int client_fd, void *buf, size_t n, uint8_t require_first);
 ssize_t send_all (int fd, const void *buf, size_t len);

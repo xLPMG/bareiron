@@ -26,14 +26,6 @@ uint8_t getChunkBiome (short x, short z) {
   x += BIOME_RADIUS;
   z += BIOME_RADIUS;
 
-  // Calculate "biome coordinates" (one step above chunk coordinates)
-  // The pattern repeats every 4 biomes, so the coordinate range is [0;3]
-  uint8_t _x = mod_abs(x / BIOME_SIZE, 16) & 3;
-  uint8_t _z = mod_abs(z / BIOME_SIZE, 16) & 3;
-  // To prevent obvious mirroring, invert values on negative axes
-  if (x < 0) _x = 3 - _x;
-  if (z < 0) _z = 3 - _z;
-
   // Calculate distance from biome center
   int8_t dx = BIOME_RADIUS - mod_abs(x, BIOME_SIZE);
   int8_t dz = BIOME_RADIUS - mod_abs(z, BIOME_SIZE);
@@ -41,12 +33,17 @@ uint8_t getChunkBiome (short x, short z) {
   // Determine whether the given chunk is within the island
   if (dx * dx + dz * dz > BIOME_RADIUS * BIOME_RADIUS) return W_beach;
 
-  // Finally, the biome itself is plucked from the world seed.
+  // Calculate "biome coordinates" (one step above chunk coordinates)
+  short biome_x = div_floor(x, BIOME_SIZE);
+  short biome_z = div_floor(z, BIOME_SIZE);
+
+  // The biome itself is plucked directly from the world seed.
   // The 32-bit seed is treated as a 4x4 biome matrix, with each biome
   // taking up 2 bytes. This is why there are only 4 biomes, excluding
   // beaches. Using the world seed as a repeating pattern avoids
   // having to generate and layer yet another hash.
-  return (world_seed >> (_x + _z * 4)) & 3;
+  uint8_t index = abs((biome_x & 3) + ((biome_z * 4) & 15));
+  return (world_seed >> (index * 2)) & 3;
 
 }
 
