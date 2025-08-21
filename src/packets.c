@@ -509,9 +509,6 @@ int cs_useItemOn (int client_fd) {
   PlayerData *player;
   if (getPlayerData(client_fd, &player)) return 1;
 
-  // check if the player is in the way
-  if (x == player->x && (y == player->y || y == player->y + 1) && z == player->z) return 0;
-
   uint16_t *item = &player->inventory_items[player->hotbar];
   uint8_t *count = &player->inventory_count[player->hotbar];
   uint8_t block = I_to_B(*item);
@@ -520,12 +517,22 @@ int cs_useItemOn (int client_fd) {
   if (block == 0) return 0;
   // if the selected slot doesn't hold any items, exit
   if (*count == 0) return 0;
-  // decrease item amount in selected slot
-  *count -= 1;
-  // clear item id in slot if amount is zero
-  if (*count == 0) *item = 0;
 
-  makeBlockChange(x, y, z, block);
+  // check if the block's placement conditions are met
+  if (
+    !(x == player->x && (y == player->y || y == player->y + 1) && z == player->z) &&
+    (getBlockAt(x, y, z) == B_air) &&
+    (!isColumnBlock(block) || getBlockAt(x, y - 1, z) != B_air)
+  ) {
+    // decrease item amount in selected slot
+    *count -= 1;
+    // clear item id in slot if amount is zero
+    if (*count == 0) *item = 0;
+    // apply server-side block change
+    makeBlockChange(x, y, z, block);
+  }
+
+  // sync hotbar contents to player
   sc_setContainerSlot(client_fd, 0, serverSlotToClientSlot(0, player->hotbar), *count, *item);
 
   return 0;

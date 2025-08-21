@@ -424,29 +424,12 @@ void makeBlockChange (short x, uint8_t y, short z, uint8_t block) {
 
 // Returns the result of mining a block, taking into account the block type and tools
 // Probability numbers obtained with this formula: N = floor(P * 32 ^ 2)
-uint16_t getMiningResult (PlayerData *player, uint8_t block) {
-
-  uint16_t held_item = player->inventory_items[player->hotbar];
-
-  // In order to avoid storing durability data, items break randomly with
-  // the probability weighted based on vanilla durability.
-  uint32_t r = fast_rand();
-  if (
-    ((held_item == I_wooden_pickaxe || held_item == I_wooden_axe || held_item == I_wooden_shovel) && r < 72796055) ||
-    ((held_item == I_stone_pickaxe || held_item == I_stone_axe || held_item == I_stone_shovel) && r < 32786009) ||
-    ((held_item == I_iron_pickaxe || held_item == I_iron_axe || held_item == I_iron_shovel) && r < 17179869) ||
-    ((held_item == I_golden_pickaxe || held_item == I_golden_axe || held_item == I_golden_shovel) && r < 134217728) ||
-    ((held_item == I_diamond_pickaxe || held_item == I_diamond_axe || held_item == I_diamond_shovel) && r < 2751420) ||
-    ((held_item == I_netherite_pickaxe || held_item == I_netherite_axe || held_item == I_netherite_shovel) && r < 2114705)
-  ) {
-    player->inventory_items[player->hotbar] = 0;
-    player->inventory_count[player->hotbar] = 0;
-    sc_setContainerSlot(player->client_fd, 0, serverSlotToClientSlot(0, player->hotbar), 0, 0);
-  }
+uint16_t getMiningResult (uint16_t held_item, uint8_t block) {
 
   switch (block) {
 
     case B_oak_leaves:
+      uint32_t r = fast_rand();
       if (r < 21474836) return I_apple; // 0.5%
       if (r < 85899345) return I_stick; // 2%
       if (r < 214748364) return I_oak_sapling; // 5%
@@ -480,6 +463,18 @@ uint16_t getMiningResult (PlayerData *player, uint8_t block) {
       ) return 0;
       break;
 
+    case B_snow:
+      // Check if player is holding (any) shovel
+      if (
+        held_item != I_wooden_shovel &&
+        held_item != I_stone_shovel &&
+        held_item != I_iron_shovel &&
+        held_item != I_golden_shovel &&
+        held_item != I_diamond_shovel &&
+        held_item != I_netherite_shovel
+      ) return 0;
+      break;
+
     default: break;
   }
 
@@ -487,11 +482,31 @@ uint16_t getMiningResult (PlayerData *player, uint8_t block) {
 
 }
 
+// Rolls a random number to determine whether the player's tool should break
+void bumpToolDurability (PlayerData *player) {
+
+  uint16_t held_item = player->inventory_items[player->hotbar];
+
+  // In order to avoid storing durability data, items break randomly with
+  // the probability weighted based on vanilla durability.
+  uint32_t r = fast_rand();
+  if (
+    ((held_item == I_wooden_pickaxe || held_item == I_wooden_axe || held_item == I_wooden_shovel) && r < 72796055) ||
+    ((held_item == I_stone_pickaxe || held_item == I_stone_axe || held_item == I_stone_shovel) && r < 32786009) ||
+    ((held_item == I_iron_pickaxe || held_item == I_iron_axe || held_item == I_iron_shovel) && r < 17179869) ||
+    ((held_item == I_golden_pickaxe || held_item == I_golden_axe || held_item == I_golden_shovel) && r < 134217728) ||
+    ((held_item == I_diamond_pickaxe || held_item == I_diamond_axe || held_item == I_diamond_shovel) && r < 2751420) ||
+    ((held_item == I_netherite_pickaxe || held_item == I_netherite_axe || held_item == I_netherite_shovel) && r < 2114705)
+  ) {
+    player->inventory_items[player->hotbar] = 0;
+    player->inventory_count[player->hotbar] = 0;
+    sc_setContainerSlot(player->client_fd, 0, serverSlotToClientSlot(0, player->hotbar), 0, 0);
+  }
+
+}
+
 // Checks whether the given block would be mined instantly with the held tool
 uint8_t isInstantlyMined (PlayerData *player, uint8_t block) {
-
-  if (block == B_dead_bush) return true;
-  if (block == B_short_grass) return true;
 
   uint16_t held_item = player->inventory_items[player->hotbar];
 
@@ -503,7 +518,26 @@ uint8_t isInstantlyMined (PlayerData *player, uint8_t block) {
     held_item == I_golden_shovel
   );
 
-  return false;
+  return (
+    block == B_dead_bush ||
+    block == B_short_grass ||
+    block == B_torch
+  );
+
+}
+
+// Checks whether the given block has to have something beneath it
+uint8_t isColumnBlock (uint8_t block) {
+
+  return (
+    block == B_snow ||
+    block == B_moss_carpet ||
+    block == B_cactus ||
+    block == B_short_grass ||
+    block == B_dead_bush ||
+    block == B_sand ||
+    block == B_torch
+  );
 
 }
 
@@ -526,17 +560,25 @@ void handlePlayerAction (PlayerData *player, int action, short x, short y, short
 
   makeBlockChange(x, y, z, 0);
 
-  uint16_t item = getMiningResult(player, block);
+  uint16_t held_item = player->inventory_items[player->hotbar];
+  uint16_t item = getMiningResult(held_item, block);
   if (item) givePlayerItem(player, item, 1);
+  bumpToolDurability(player);
 
   // Check if any blocks above this should break
-  uint8_t block_above = getBlockAt(x, y + 1, z);
-  if (
-    block_above == B_snow ||
-    block_above == B_moss_carpet ||
-    block_above == B_cactus ||
-    block_above == B_short_grass ||
-    block_above == B_dead_bush
-  ) return handlePlayerAction(player, 2, x, y + 1, z);
+  uint8_t y_offset = 1;
+  uint8_t block_above = getBlockAt(x, y + y_offset, z);
+
+  // Iterate upward over all blocks in the column
+  while (isColumnBlock(block_above)) {
+    // Destroy the next block
+    makeBlockChange(x, y + y_offset, z, 0);
+    // Check for item drops *without a tool*
+    uint16_t item = getMiningResult(0, block_above);
+    if (item) givePlayerItem(player, item, 1);
+    // Select the next block in the column
+    y_offset ++;
+    block_above = getBlockAt(x, y + y_offset, z);
+  }
 
 }

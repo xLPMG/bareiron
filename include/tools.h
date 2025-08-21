@@ -53,8 +53,10 @@ uint8_t clientSlotToServerSlot (int window_id, uint8_t slot);
 uint8_t getBlockChange (short x, uint8_t y, short z);
 void makeBlockChange (short x, uint8_t y, short z, uint8_t block);
 
-uint16_t getMiningResult (PlayerData *player, uint8_t block);
 uint8_t isInstantlyMined (PlayerData *player, uint8_t block);
+uint8_t isColumnBlock (uint8_t block);
+uint16_t getMiningResult (uint16_t held_item, uint8_t block);
+void bumpToolDurability (PlayerData *player);
 void handlePlayerAction (PlayerData *player, int action, short x, short y, short z);
 
 #endif
