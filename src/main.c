@@ -111,6 +111,13 @@ void handlePacket (int client_fd, int length, int packet_id) {
       }
       break;
 
+    case 0x08:
+      if (state == STATE_PLAY) {
+        cs_chat(client_fd);
+        return;
+      }
+      break;
+
     case 0x0B:
       if (state == STATE_PLAY) {
         if (cs_clientStatus(client_fd)) break;

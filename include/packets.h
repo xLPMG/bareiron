@@ -14,6 +14,7 @@ int cs_setHeldItem (int client_fd);
 int cs_clickContainer (int client_fd);
 int cs_closeContainer (int client_fd);
 int cs_clientStatus (int client_fd);
+int cs_chat(int client_fd);
 
 int sc_loginSuccess (int client_fd, uint8_t *uuid, char *name);
 int sc_knownPacks (int client_fd);

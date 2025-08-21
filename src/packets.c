@@ -901,6 +901,7 @@ int cs_clientStatus (int client_fd) {
   return 0;
 }
 
+// S->C System Chat
 int sc_systemChat (int client_fd, char* message, uint16_t len) {
 
   writeVarInt(client_fd, 5 + len);
@@ -914,6 +915,52 @@ int sc_systemChat (int client_fd, char* message, uint16_t len) {
   // Is action bar message?
   writeByte(client_fd, false);
 
+}
+
+// C->S Chat
+int cs_chat (int client_fd) {
+
+  readString(client_fd);
+
+  PlayerData *player;
+  if (getPlayerData(client_fd, &player)) return 1;
+
+  size_t message_len = strlen(recv_buffer);
+  uint8_t name_len = strlen(player->name);
+
+  // To be safe, cap messages to 32 bytes before the buffer length
+  if (message_len > 224) {
+    recv_buffer[224] = '\0';
+    message_len = 224;
+  }
+
+  // Shift message contents forward to make space for player name tag
+  memmove(recv_buffer + name_len + 3, recv_buffer, message_len + 1);
+  // Copy player name to index 1
+  memcpy(recv_buffer + 1, player->name, name_len);
+  // Surround player name with brackets and a space
+  recv_buffer[0] = '<';
+  recv_buffer[name_len + 1] = '>';
+  recv_buffer[name_len + 2] = ' ';
+
+  // Forward message to all connected players
+  for (int i = 0; i < MAX_PLAYERS; i ++) {
+    if (player_data[i].client_fd == -1) continue;
+    sc_systemChat(client_fd, recv_buffer, message_len + name_len + 3);
+  }
+
+  readUint64(client_fd); // Ignore timestamp
+  readUint64(client_fd); // Ignore salt
+
+  // Ignore signature (if any)
+  uint8_t has_signature = readByte(client_fd);
+  if (has_signature) recv_all(client_fd, recv_buffer, 256, false);
+
+  readVarInt(client_fd); // Ignore message count
+  readUint32(client_fd); // Ignore acknowledgement bitmask
+  readByte(client_fd); // Ignore checksum
+
+  return 0;
 }
 
 // S->C Registry Data (multiple packets) and Update Tags (configuration, multiple packets)
