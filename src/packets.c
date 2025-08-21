@@ -144,7 +144,7 @@ int sc_finishConfiguration (int client_fd) {
 // S->C Login (play)
 int sc_loginPlay (int client_fd) {
 
-  writeVarInt(client_fd, 69 + sizeVarInt(MAX_PLAYERS));
+  writeVarInt(client_fd, 49 + sizeVarInt(MAX_PLAYERS));
   writeByte(client_fd, 0x2B);
   // entity id
   uint32_t entity_id = getClientIndex(client_fd);
@@ -153,9 +153,9 @@ int sc_loginPlay (int client_fd) {
   writeByte(client_fd, false);
   // dimensions
   writeVarInt(client_fd, 1);
-  writeVarInt(client_fd, 19);
-  const char *dimension = "minecraft:overworld";
-  send_all(client_fd, dimension, 19);
+  writeVarInt(client_fd, 9);
+  const char *dimension = "overworld";
+  send_all(client_fd, dimension, 9);
   // maxplayers
   writeVarInt(client_fd, MAX_PLAYERS);
   // view distance
@@ -171,8 +171,8 @@ int sc_loginPlay (int client_fd) {
   // dimension id
   writeVarInt(client_fd, 0);
   // dimension name
-  writeVarInt(client_fd, 19);
-  send_all(client_fd, dimension, 19);
+  writeVarInt(client_fd, 9);
+  send_all(client_fd, dimension, 9);
   // hashed seed
   writeUint64(client_fd, 0x0123456789ABCDEF);
   // gamemode
@@ -846,6 +846,57 @@ int sc_setHealth (int client_fd, uint8_t health, uint8_t food) {
   writeFloat(client_fd, (float)health);
   writeVarInt(client_fd, food);
   writeFloat(client_fd, 5.0f); // saturation
+
+  return 0;
+}
+
+// S->C Respawn
+int sc_respawn (int client_fd) {
+
+  writeVarInt(client_fd, 28);
+  writeByte(client_fd, 0x4B);
+
+  // dimension id
+  writeVarInt(client_fd, 0);
+  // dimension name
+  const char *dimension = "overworld";
+  writeVarInt(client_fd, 9);
+  send_all(client_fd, dimension, 9);
+  // hashed seed
+  writeUint64(client_fd, 0x0123456789ABCDEF);
+  // gamemode
+  writeByte(client_fd, GAMEMODE);
+  // previous gamemode
+  writeByte(client_fd, 0xFF);
+  // is debug
+  writeByte(client_fd, 0);
+  // is flat
+  writeByte(client_fd, 0);
+  // has death location
+  writeByte(client_fd, 0);
+  // portal cooldown
+  writeVarInt(client_fd, 0);
+  // sea level
+  writeVarInt(client_fd, 63);
+  // data kept
+  writeByte(client_fd, 0);
+
+  return 0;
+}
+
+// C->S Client Status
+int cs_clientStatus (int client_fd) {
+
+  uint8_t id = readByte(client_fd);
+
+  PlayerData *player;
+  if (getPlayerData(client_fd, &player)) return 1;
+
+  if (id == 0) {
+    sc_respawn(client_fd);
+    resetPlayerData(player);
+    spawnPlayer(player);
+  }
 
   return 0;
 }

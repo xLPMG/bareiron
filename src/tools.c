@@ -218,6 +218,21 @@ int getClientIndex (int client_fd) {
   return -1;
 }
 
+void resetPlayerData (PlayerData *player) {
+  player->health = 20;
+  player->hunger = 20;
+  player->y = -32767;
+  player->grounded_y = 0;
+  for (int i = 0; i < 41; i ++) {
+    player->inventory_items[i] = 0;
+    player->inventory_count[i] = 0;
+  }
+  for (int i = 0; i < 9; i ++) {
+    player->craft_items[i] = 0;
+    player->craft_count[i] = 0;
+  }
+}
+
 int reservePlayerData (int client_fd, uint8_t *uuid, char *name) {
 
   for (int i = 0; i < MAX_PLAYERS; i ++) {
@@ -237,9 +252,7 @@ int reservePlayerData (int client_fd, uint8_t *uuid, char *name) {
       player_data[i].client_fd = client_fd;
       memcpy(player_data[i].uuid, uuid, 16);
       memcpy(player_data[i].name, name, 16);
-      player_data[i].health = 20;
-      player_data[i].hunger = 20;
-      player_data[i].y = -32767;
+      resetPlayerData(&player_data[i]);
       return 0;
     }
   }
@@ -354,6 +367,72 @@ int givePlayerItem (PlayerData *player, uint16_t item, uint8_t count) {
   sc_setContainerSlot(player->client_fd, 0, serverSlotToClientSlot(0, slot), player->inventory_count[slot], item);
 
   return 0;
+
+}
+
+// Sends the full sequence for spawning the player to the client
+void spawnPlayer (PlayerData *player) {
+
+  // Player spawn coordinates, initialized to placeholders
+  float spawn_x = 8.5f, spawn_y = 80.0f, spawn_z = 8.5f;
+  float spawn_yaw = 0.0f, spawn_pitch = 0.0f;
+
+  if (player->y == -32767) { // Is this a new player?
+    // Determine spawning Y coordinate based on terrain height
+    int _x = 8 / CHUNK_SIZE;
+    int _z = 8 / CHUNK_SIZE;
+    int rx = 8 % CHUNK_SIZE;
+    int rz = 8 % CHUNK_SIZE;
+    spawn_y = getHeightAt(rx, rz, _x, _z, getChunkHash(_x, _z), getChunkBiome(_x, _z)) + 1;
+  } else { // Not a new player
+    // Calculate spawn position from player data
+    spawn_x = player->x > 0 ? (float)player->x + 0.5 : (float)player->x - 0.5;
+    spawn_y = player->y;
+    spawn_z = player->z > 0 ? (float)player->z + 0.5 : (float)player->z - 0.5;
+    spawn_yaw = player->yaw * 180 / 127;
+    spawn_pitch = player->pitch * 90 / 127;
+  }
+
+  // Teleport player to spawn coordinates (first pass)
+  sc_synchronizePlayerPosition(player->client_fd, spawn_x, spawn_y, spawn_z, spawn_yaw, spawn_pitch);
+
+  task_yield(); // Check task timer between packets
+
+  // Sync client inventory and hotbar
+  for (uint8_t i = 0; i < 41; i ++) {
+    sc_setContainerSlot(player->client_fd, 0, serverSlotToClientSlot(0, i), player->inventory_count[i], player->inventory_items[i]);
+  }
+  sc_setHeldItem(player->client_fd, player->hotbar);
+  // Sync client health and hunger
+  sc_setHealth(player->client_fd, player->health, player->hunger);
+  // Sync client clock time
+  sc_updateTime(player->client_fd, world_time);
+
+  // Give the player flight (for testing)
+  sc_playerAbilities(player->client_fd, 0x04);
+
+  // Calculate player's chunk coordinates
+  short _x = div_floor(player->x, 16), _z = div_floor(player->z, 16);
+
+  // Indicate that we're about to send chunk data
+  sc_setDefaultSpawnPosition(player->client_fd, 8, 80, 8);
+  sc_startWaitingForChunks(player->client_fd);
+  sc_setCenterChunk(player->client_fd, _x, _z);
+
+  task_yield(); // Check task timer between packets
+
+  // Send spawn chunk first
+  sc_chunkDataAndUpdateLight(player->client_fd, _x, _z);
+  for (int i = -VIEW_DISTANCE; i <= VIEW_DISTANCE; i ++) {
+    for (int j = -VIEW_DISTANCE; j <= VIEW_DISTANCE; j ++) {
+      if (i == 0 && j == 0) continue;
+      sc_chunkDataAndUpdateLight(player->client_fd, _x + i, _z + j);
+    }
+  }
+  // Re-teleport player after all chunks have been sent
+  sc_synchronizePlayerPosition(player->client_fd, spawn_x, spawn_y, spawn_z, spawn_yaw, spawn_pitch);
+
+  task_yield(); // Check task timer between packets
 
 }
 

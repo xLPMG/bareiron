@@ -40,6 +40,8 @@ extern uint8_t recv_buffer[256];
 extern uint32_t world_seed;
 extern uint32_t rng_seed;
 
+extern uint64_t world_time;
+
 extern uint16_t client_count;
 
 #pragma pack(push, 1)

@@ -42,10 +42,12 @@ void setClientState (int client_fd, int new_state);
 int getClientState (int client_fd);
 int getClientIndex (int client_fd);
 
+void resetPlayerData (PlayerData *player);
 int reservePlayerData (int client_fd, uint8_t *uuid, char* name);
 int getPlayerData (int client_fd, PlayerData **output);
 void clearPlayerFD (int client_fd);
 int givePlayerItem (PlayerData *player, uint16_t item, uint8_t count);
+void spawnPlayer (PlayerData *player);
 
 uint8_t serverSlotToClientSlot (int window_id, uint8_t slot);
 uint8_t clientSlotToServerSlot (int window_id, uint8_t slot);

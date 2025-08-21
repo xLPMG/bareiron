@@ -31,8 +31,6 @@
 #include "worldgen.h"
 #include "registries.h"
 
-uint64_t world_time = 0;
-
 void handlePacket (int client_fd, int length, int packet_id) {
 
   int state = getClientState(client_fd);
@@ -72,66 +70,16 @@ void handlePacket (int client_fd, int length, int packet_id) {
         return;
       } else if (state == STATE_CONFIGURATION) {
         printf("Client Acknowledged Configuration\n\n");
-        setClientState(client_fd, STATE_PLAY);
 
+        // Enter client into "play" state
+        setClientState(client_fd, STATE_PLAY);
         sc_loginPlay(client_fd);
 
         PlayerData *player;
         if (getPlayerData(client_fd, &player)) break;
 
-        float spawn_x = 8.5f, spawn_y = 80.0f, spawn_z = 8.5f;
-        float spawn_yaw = 0.0f, spawn_pitch = 0.0f;
-
-        if (player->y == -32767) { // is this a new player?
-          int _x = 8 / CHUNK_SIZE;
-          int _z = 8 / CHUNK_SIZE;
-          int rx = 8 % CHUNK_SIZE;
-          int rz = 8 % CHUNK_SIZE;
-          spawn_y = getHeightAt(rx, rz, _x, _z, getChunkHash(_x, _z), getChunkBiome(_x, _z)) + 1;
-        } else {
-          spawn_x = player->x > 0 ? (float)player->x + 0.5 : (float)player->x - 0.5;
-          spawn_y = player->y;
-          spawn_z = player->z > 0 ? (float)player->z + 0.5 : (float)player->z - 0.5;
-          spawn_yaw = player->yaw * 180 / 127;
-          spawn_pitch = player->pitch * 90 / 127;
-        }
-
-        sc_synchronizePlayerPosition(client_fd, spawn_x, spawn_y, spawn_z, spawn_yaw, spawn_pitch);
-
-        task_yield();
-
-        for (uint8_t i = 0; i < 41; i ++) {
-          sc_setContainerSlot(client_fd, 0, serverSlotToClientSlot(0, i), player->inventory_count[i], player->inventory_items[i]);
-        }
-        sc_setHeldItem(client_fd, player->hotbar);
-
-        sc_setHealth(client_fd, player->health, player->hunger);
-
-        sc_playerAbilities(client_fd, 0x01 + 0x04); // invulnerability + flight
-        sc_updateTime(client_fd, world_time);
-
-        short _x = player->x / 16, _z = player->z / 16;
-        if (player->x % 16 < 0) _x -= 1;
-        if (player->z % 16 < 0) _z -= 1;
-
-        sc_setDefaultSpawnPosition(client_fd, 8, 80, 8);
-        sc_startWaitingForChunks(client_fd);
-        sc_setCenterChunk(client_fd, _x, _z);
-
-        task_yield();
-
-        // Send spawn chunk first
-        sc_chunkDataAndUpdateLight(client_fd, _x, _z);
-        for (int i = -VIEW_DISTANCE; i <= VIEW_DISTANCE; i ++) {
-          for (int j = -VIEW_DISTANCE; j <= VIEW_DISTANCE; j ++) {
-            if (i == 0 && j == 0) continue;
-            sc_chunkDataAndUpdateLight(client_fd, _x + i, _z + j);
-          }
-        }
-        // Re-synchronize player position after all chunks have been sent
-        sc_synchronizePlayerPosition(client_fd, spawn_x, spawn_y, spawn_z, spawn_yaw, spawn_pitch);
-
-        task_yield();
+        // Send full client spawn sequence
+        spawnPlayer(player);
 
         // Register all existing players and spawn their entities, and broadcast
         // information about the joining player to all existing players.
@@ -153,6 +101,13 @@ void handlePacket (int client_fd, int length, int packet_id) {
         printf("Received Client's Known Packs\n");
         printf("  Finishing configuration\n\n");
         sc_finishConfiguration(client_fd);
+      }
+      break;
+
+    case 0x0B:
+      if (state == STATE_PLAY) {
+        if (cs_clientStatus(client_fd)) break;
+        return;
       }
       break;
 
