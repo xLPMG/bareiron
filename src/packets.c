@@ -915,6 +915,7 @@ int sc_systemChat (int client_fd, char* message, uint16_t len) {
   // Is action bar message?
   writeByte(client_fd, false);
 
+  return 0;
 }
 
 // C->S Chat
@@ -925,7 +926,7 @@ int cs_chat (int client_fd) {
   PlayerData *player;
   if (getPlayerData(client_fd, &player)) return 1;
 
-  size_t message_len = strlen(recv_buffer);
+  size_t message_len = strlen((char *)recv_buffer);
   uint8_t name_len = strlen(player->name);
 
   // To be safe, cap messages to 32 bytes before the buffer length
@@ -946,7 +947,7 @@ int cs_chat (int client_fd) {
   // Forward message to all connected players
   for (int i = 0; i < MAX_PLAYERS; i ++) {
     if (player_data[i].client_fd == -1) continue;
-    sc_systemChat(client_fd, recv_buffer, message_len + name_len + 3);
+    sc_systemChat(client_fd, (char *)recv_buffer, message_len + name_len + 3);
   }
 
   readUint64(client_fd); // Ignore timestamp
