@@ -65,6 +65,9 @@ typedef struct {
   #endif
   int8_t yaw;
   int8_t pitch;
+  short grounded_y;
+  uint8_t health;
+  uint8_t hunger;
   uint8_t hotbar;
   uint16_t inventory_items[41];
   uint16_t craft_items[9];

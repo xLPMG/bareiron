@@ -105,6 +105,8 @@ void handlePacket (int client_fd, int length, int packet_id) {
         }
         sc_setHeldItem(client_fd, player->hotbar);
 
+        sc_setHealth(client_fd, player->health, player->hunger);
+
         sc_playerAbilities(client_fd, 0x01 + 0x04); // invulnerability + flight
         sc_updateTime(client_fd, world_time);
 
@@ -182,11 +184,12 @@ void handlePacket (int client_fd, int length, int packet_id) {
 
         double x, y, z;
         float yaw, pitch;
+        uint8_t on_ground;
 
         // Read player position (and rotation)
-        if (packet_id == 0x1D) cs_setPlayerPosition(client_fd, &x, &y, &z);
-        else if (packet_id == 0x1F) cs_setPlayerRotation (client_fd, &yaw, &pitch);
-        else cs_setPlayerPositionAndRotation(client_fd, &x, &y, &z, &yaw, &pitch);
+        if (packet_id == 0x1D) cs_setPlayerPosition(client_fd, &x, &y, &z, &on_ground);
+        else if (packet_id == 0x1F) cs_setPlayerRotation (client_fd, &yaw, &pitch, &on_ground);
+        else cs_setPlayerPositionAndRotation(client_fd, &x, &y, &z, &yaw, &pitch, &on_ground);
 
         PlayerData *player;
         if (getPlayerData(client_fd, &player)) break;
@@ -195,6 +198,18 @@ void handlePacket (int client_fd, int length, int packet_id) {
         if (packet_id != 0x1D) {
           player->yaw = ((short)(yaw + 540) % 360 - 180) * 127 / 180;
           player->pitch = pitch / 90.0f * 127.0f;
+        }
+
+        // Handle fall damage
+        if (on_ground) {
+          int8_t damage = player->grounded_y - player->y - 3;
+          if (damage > 0 && getBlockAt(player->x, player->y, player->z) != B_water) {
+            if (damage >= player->health) player->health = 0;
+            else player->health -= damage;
+            sc_damageEvent(client_fd, client_fd, D_fall);
+            sc_setHealth(client_fd, player->health, player->hunger);
+          }
+          player->grounded_y = player->y;
         }
 
         // Broadcast player position to other players

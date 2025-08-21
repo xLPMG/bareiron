@@ -237,6 +237,8 @@ int reservePlayerData (int client_fd, uint8_t *uuid, char *name) {
       player_data[i].client_fd = client_fd;
       memcpy(player_data[i].uuid, uuid, 16);
       memcpy(player_data[i].name, name, 16);
+      player_data[i].health = 20;
+      player_data[i].hunger = 20;
       player_data[i].y = -32767;
       return 0;
     }

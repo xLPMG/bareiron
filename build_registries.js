@@ -416,6 +416,9 @@ ${Object.entries(itemsAndBlocks.items).map(c => `#define I_${c[0]} ${c[1]}`).joi
 // Biome identifiers
 ${biomes.map((c, i) => `#define W_${c} ${i}`).join("\n")}
 
+// Damage type identifiers
+${registries["damage_type"].map((c, i) => `#define D_${c} ${i}`).join("\n")}
+
 #endif
 `;
 

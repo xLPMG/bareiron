@@ -614,7 +614,7 @@ int cs_clickContainer (int client_fd) {
 }
 
 // C->S Set Player Position And Rotation
-int cs_setPlayerPositionAndRotation (int client_fd, double *x, double *y, double *z, float *yaw, float *pitch) {
+int cs_setPlayerPositionAndRotation (int client_fd, double *x, double *y, double *z, float *yaw, float *pitch, uint8_t *on_ground) {
 
   *x = readDouble(client_fd);
   *y = readDouble(client_fd);
@@ -623,38 +623,32 @@ int cs_setPlayerPositionAndRotation (int client_fd, double *x, double *y, double
   *yaw = readFloat(client_fd);
   *pitch = readFloat(client_fd);
 
-  // ignore flags
-  readByte(client_fd);
+  *on_ground = readByte(client_fd) & 0x01;
 
   return 0;
-
 }
 
 // C->S Set Player Position
-int cs_setPlayerPosition (int client_fd, double *x, double *y, double *z) {
+int cs_setPlayerPosition (int client_fd, double *x, double *y, double *z, uint8_t *on_ground) {
 
   *x = readDouble(client_fd);
   *y = readDouble(client_fd);
   *z = readDouble(client_fd);
 
-  // ignore flags
-  readByte(client_fd);
+  *on_ground = readByte(client_fd) & 0x01;
 
   return 0;
-
 }
 
 // C->S Set Player Rotation
-int cs_setPlayerRotation (int client_fd, float *yaw, float *pitch) {
+int cs_setPlayerRotation (int client_fd, float *yaw, float *pitch, uint8_t *on_ground) {
 
   *yaw = readFloat(client_fd);
   *pitch = readFloat(client_fd);
 
-  // ignore flags
-  readByte(client_fd);
+  *on_ground = readByte(client_fd) & 0x01;
 
   return 0;
-
 }
 
 // C->S Set Held Item (serverbound)
@@ -797,6 +791,7 @@ int sc_teleportEntity (
   return 0;
 }
 
+// S->C Set Head Rotation
 int sc_setHeadRotation (int client_fd, int id, uint8_t yaw) {
 
   // Packet length and ID
@@ -810,6 +805,7 @@ int sc_setHeadRotation (int client_fd, int id, uint8_t yaw) {
   return 0;
 }
 
+// S->C Set Head Rotation
 int sc_updateEntityRotation (int client_fd, int id, uint8_t yaw, uint8_t pitch) {
 
   // Packet length and ID
@@ -822,6 +818,34 @@ int sc_updateEntityRotation (int client_fd, int id, uint8_t yaw, uint8_t pitch) 
   writeByte(client_fd, pitch);
   // "On ground" flag
   writeByte(client_fd, 1);
+
+  return 0;
+}
+
+// S->C Damage Event
+int sc_damageEvent (int client_fd, int entity_id, int type) {
+
+  writeVarInt(client_fd, 4 + sizeVarInt(entity_id) + sizeVarInt(type));
+  writeByte(client_fd, 0x19);
+
+  writeVarInt(client_fd, entity_id);
+  writeVarInt(client_fd, type);
+  writeByte(client_fd, 0);
+  writeByte(client_fd, 0);
+  writeByte(client_fd, false);
+
+  return 0;
+}
+
+// S->C Set Health
+int sc_setHealth (int client_fd, uint8_t health, uint8_t food) {
+
+  writeVarInt(client_fd, 9 + sizeVarInt(food));
+  writeByte(client_fd, 0x61);
+
+  writeFloat(client_fd, (float)health);
+  writeVarInt(client_fd, food);
+  writeFloat(client_fd, 5.0f); // saturation
 
   return 0;
 }
