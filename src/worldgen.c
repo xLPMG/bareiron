@@ -7,6 +7,7 @@
 #include "globals.h"
 #include "tools.h"
 #include "registries.h"
+#include "procedures.h"
 #include "worldgen.h"
 
 uint32_t getChunkHash (short x, short z) {

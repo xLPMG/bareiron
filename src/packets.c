@@ -17,6 +17,8 @@
 #include "registries.h"
 #include "worldgen.h"
 #include "crafting.h"
+#include "procedures.h"
+#include "packets.h"
 
 // C->S Handshake
 int cs_handshake (int client_fd) {

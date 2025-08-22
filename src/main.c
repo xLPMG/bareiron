@@ -30,6 +30,7 @@
 #include "packets.h"
 #include "worldgen.h"
 #include "registries.h"
+#include "procedures.h"
 
 void handlePacket (int client_fd, int length, int packet_id) {
 
