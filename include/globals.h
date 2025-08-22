@@ -78,7 +78,7 @@ typedef struct {
   #endif
   int8_t yaw;
   int8_t pitch;
-  short grounded_y;
+  uint8_t grounded_y;
   uint8_t health;
   uint8_t hunger;
   uint8_t hotbar;
@@ -86,6 +86,8 @@ typedef struct {
   uint16_t craft_items[9];
   uint8_t inventory_count[41];
   uint8_t craft_count[9];
+  // 0x01 - attack cooldown
+  uint8_t flags;
 } PlayerData;
 
 typedef struct {

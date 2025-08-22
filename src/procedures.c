@@ -529,6 +529,8 @@ void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t da
   }
 
   if (attacker_id < 65536 && attacker_id != -1) { // Attacker is a player
+    // Check if attack cooldown flag is set
+    if (player->flags & 0x01) return;
     // Scale damage based on held item
     uint16_t held_item = player->inventory_items[player->hotbar];
     if (held_item == I_wooden_sword) damage *= 4;
@@ -537,6 +539,8 @@ void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t da
     else if (held_item == I_iron_sword) damage *= 6;
     else if (held_item == I_diamond_sword) damage *= 7;
     else if (held_item == I_netherite_sword) damage *= 8;
+    // Enable attack cooldown
+    player->flags |= 0x01;
   }
 
   // Whether this attack caused the target entity to die
@@ -573,11 +577,15 @@ void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t da
 void handleServerTick (int64_t time_since_last_tick) {
 
   // Send Keep Alive and Update Time packets to all in-game clients
-  world_time = (world_time + 20 * time_since_last_tick / 1000000) % 24000;
+  world_time = (world_time + time_since_last_tick / 50000) % 24000;
   for (int i = 0; i < MAX_PLAYERS; i ++) {
     if (player_data[i].client_fd == -1) continue;
     sc_keepAlive(player_data[i].client_fd);
     sc_updateTime(player_data[i].client_fd, world_time);
+    // Reset attack cooldown if at least a second has passed
+    if (time_since_last_tick >= 1000000) {
+      player_data[i].flags &= ~0x01;
+    }
   }
 
   /**
