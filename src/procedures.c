@@ -435,7 +435,6 @@ uint8_t isInstantlyMined (PlayerData *player, uint8_t block) {
 
 // Checks whether the given block has to have something beneath it
 uint8_t isColumnBlock (uint8_t block) {
-
   return (
     block == B_snow ||
     block == B_moss_carpet ||
@@ -445,20 +444,29 @@ uint8_t isColumnBlock (uint8_t block) {
     block == B_sand ||
     block == B_torch
   );
-
 }
 
+// Checks whether the given block is non-solid
 uint8_t isPassableBlock (uint8_t block) {
-
   return (
     block == B_air ||
     block == B_water ||
+    block == B_snow ||
     block == B_moss_carpet ||
     block == B_short_grass ||
     block == B_dead_bush ||
     block == B_torch
   );
+}
 
+// Checks whether the given block can be replaced by another block
+uint8_t isReplaceableBlock (uint8_t block) {
+  return (
+    block == B_air ||
+    block == B_water ||
+    block == B_short_grass ||
+    block == B_snow
+  );
 }
 
 void handlePlayerAction (PlayerData *player, int action, short x, short y, short z) {

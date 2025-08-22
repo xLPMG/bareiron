@@ -523,8 +523,13 @@ int cs_useItemOn (int client_fd) {
 
   // check if the block's placement conditions are met
   if (
-    !(x == player->x && (y == player->y || y == player->y + 1) && z == player->z) &&
-    (getBlockAt(x, y, z) == B_air) &&
+    !( // player is not in the way
+      !isPassableBlock(block) &&
+      x == player->x &&
+      (y == player->y || y == player->y + 1) &&
+      z == player->z
+    ) &&
+    isReplaceableBlock(getBlockAt(x, y, z)) &&
     (!isColumnBlock(block) || getBlockAt(x, y - 1, z) != B_air)
   ) {
     // decrease item amount in selected slot
