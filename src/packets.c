@@ -1017,6 +1017,7 @@ int sc_removeEntity (int client_fd, int entity_id) {
   writeByte(client_fd, 1);
   writeVarInt(client_fd, entity_id);
 
+  return 0;
 }
 
 // S->C Registry Data (multiple packets) and Update Tags (configuration, multiple packets)
