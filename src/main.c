@@ -214,7 +214,7 @@ void handlePacket (int client_fd, int length, int packet_id) {
         #ifdef SCALE_MOVEMENT_UPDATES_TO_PLAYER_COUNT
           // If applicable, broadcast only every client_count-th movement update
           uint8_t should_broadcast = false;
-          if (player->packets_since_update++ == client_count) {
+          if (++player->packets_since_update >= client_count) {
             should_broadcast = true;
             player->packets_since_update = 0;
           }
