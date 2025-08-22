@@ -667,7 +667,7 @@ void handleServerTick (int64_t time_since_last_tick) {
     } else { // Hostile mob movement handling
 
       // If we're already next to the player, hurt them and skip movement
-      if (closest_dist < 3) {
+      if (closest_dist < 3 && abs(mob_data[i].y - closest_player->y) < 2) {
         hurtEntity(closest_player->client_fd, 65536 + i, D_generic, 6);
         continue;
       }
