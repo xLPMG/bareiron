@@ -13,6 +13,7 @@ inline int div_floor (int a, int b) {
   return a % b < 0 ? (a - b) / b : a / b;
 }
 
+extern uint64_t total_bytes_received;
 ssize_t recv_all (int client_fd, void *buf, size_t n, uint8_t require_first);
 ssize_t send_all (int client_fd, const void *buf, ssize_t len);
 

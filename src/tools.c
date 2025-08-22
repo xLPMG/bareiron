@@ -29,6 +29,10 @@ static uint64_t htonll (uint64_t value) {
 #endif
 }
 
+// Keep track of the total amount of bytes received with recv_all
+// Helps notice misread packets and clean up after errors
+uint64_t total_bytes_received = 0;
+
 ssize_t recv_all (int client_fd, void *buf, size_t n, uint8_t require_first) {
   char *p = buf;
   size_t total = 0;
@@ -52,15 +56,18 @@ ssize_t recv_all (int client_fd, void *buf, size_t n, uint8_t require_first) {
         task_yield();
         continue;
       } else {
+        total_bytes_received += total;
         return -1; // real error
       }
     } else if (r == 0) {
       // connection closed before full read
+      total_bytes_received += total;
       return total;
     }
     total += r;
   }
 
+  total_bytes_received += total;
   return total; // got exactly n bytes
 }
 

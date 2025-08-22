@@ -38,6 +38,13 @@
 // player counts. For very many players, makes movement look jittery.
 #define SCALE_MOVEMENT_UPDATES_TO_PLAYER_COUNT
 
+// If defined, logs unrecognized packet IDs
+// #define DEV_LOG_UNKNOWN_PACKETS
+// If defined, logs cases when packet length doesn't match parsed byte count
+#define DEV_LOG_LENGTH_DISCREPANCY
+// If defined, log chunk generation events
+#define DEV_LOG_CHUNK_GENERATION
+
 #define STATE_NONE 0
 #define STATE_STATUS 1
 #define STATE_LOGIN 2

@@ -35,40 +35,34 @@
 void handlePacket (int client_fd, int length, int packet_id) {
 
   int state = getClientState(client_fd);
+  uint64_t bytes_received_start = total_bytes_received;
 
   switch (packet_id) {
 
     case 0x00:
       if (state == STATE_NONE) {
         if (cs_handshake(client_fd)) break;
-        return;
       } else if (state == STATE_LOGIN) {
         uint8_t uuid[16];
         char name[16];
         if (cs_loginStart(client_fd, uuid, name)) break;
         if (reservePlayerData(client_fd, uuid, name)) break;
         if (sc_loginSuccess(client_fd, uuid, name)) break;
-        return;
       } else if (state == STATE_CONFIGURATION) {
         if (cs_clientInformation(client_fd)) break;
         if (sc_knownPacks(client_fd)) break;
         if (sc_registries(client_fd)) break;
-        return;
       }
       break;
 
     case 0x02:
-      if (state == STATE_CONFIGURATION) {
-        if (cs_pluginMessage(client_fd)) break;
-        return;
-      }
+      if (state == STATE_CONFIGURATION) cs_pluginMessage(client_fd);
       break;
 
     case 0x03:
       if (state == STATE_LOGIN) {
         printf("Client Acknowledged Login\n\n");
         setClientState(client_fd, STATE_CONFIGURATION);
-        return;
       } else if (state == STATE_CONFIGURATION) {
         printf("Client Acknowledged Configuration\n\n");
 
@@ -111,7 +105,6 @@ void handlePacket (int client_fd, int length, int packet_id) {
           );
         }
 
-        return;
       }
       break;
 
@@ -124,53 +117,33 @@ void handlePacket (int client_fd, int length, int packet_id) {
       break;
 
     case 0x08:
-      if (state == STATE_PLAY) {
-        cs_chat(client_fd);
-        return;
-      }
+      if (state == STATE_PLAY) cs_chat(client_fd);
       break;
 
     case 0x0B:
-      if (state == STATE_PLAY) {
-        if (cs_clientStatus(client_fd)) break;
-        return;
-      }
+      if (state == STATE_PLAY) cs_clientStatus(client_fd);
       break;
 
-    case 0x0C:
-      if (state == STATE_PLAY) {
-        // client tick
-        return;
-      }
+    case 0x0C: // Client tick (ignored)
       break;
 
     case 0x11:
-      if (state == STATE_PLAY) {
-        cs_clickContainer(client_fd);
-        return;
-      }
+      if (state == STATE_PLAY) cs_clickContainer(client_fd);
       break;
 
     case 0x12:
-      if (state == STATE_PLAY) {
-        cs_closeContainer(client_fd);
-        return;
-      }
+      if (state == STATE_PLAY) cs_closeContainer(client_fd);
       break;
 
     case 0x1B:
       if (state == STATE_PLAY) {
         // Serverbound keep-alive (ignored)
-        recv_all(client_fd, recv_buffer, 8, false);
-        return;
+        recv_all(client_fd, recv_buffer, length, false);
       }
       break;
 
     case 0x19:
-      if (state == STATE_PLAY) {
-        if (cs_interact(client_fd)) break;
-        return;
-      }
+      if (state == STATE_PLAY) cs_interact(client_fd);
       break;
 
     case 0x1D:
@@ -202,7 +175,7 @@ void handlePacket (int client_fd, int length, int packet_id) {
         }
 
         // Don't continue if all we got were flags
-        if (packet_id == 0x20) return;
+        if (packet_id == 0x20) break;
 
         // Update rotation in player data (if applicable)
         if (packet_id != 0x1D) {
@@ -241,7 +214,7 @@ void handlePacket (int client_fd, int length, int packet_id) {
         }
 
         // Don't continue if all we got was rotation data
-        if (packet_id == 0x1F) return;
+        if (packet_id == 0x1F) break;
 
         // Cast the values to short to get integer position
         short cx = x, cy = y, cz = z;
@@ -257,7 +230,7 @@ void handlePacket (int client_fd, int length, int packet_id) {
         player->z = cz;
 
         // Exit early if no chunk borders were crossed
-        if (dx == 0 && dz == 0) return;
+        if (dx == 0 && dz == 0) break;
 
         // Check if the player has recently been in this chunk
         int found = false;
@@ -267,7 +240,7 @@ void handlePacket (int client_fd, int length, int packet_id) {
             break;
           }
         }
-        if (found) return;
+        if (found) break;
 
         // Update player's recently visited chunks
         for (int i = 0; i < VISITED_HISTORY - 1; i ++) {
@@ -277,12 +250,14 @@ void handlePacket (int client_fd, int length, int packet_id) {
         player->visited_x[VISITED_HISTORY - 1] = _x;
         player->visited_z[VISITED_HISTORY - 1] = _z;
 
-        printf("sending new chunks (%d, %d)\n", _x, _z);
         sc_setCenterChunk(client_fd, _x, _z);
 
         int count = 0;
-        clock_t start, end;
-        start = clock();
+        #ifdef DEV_LOG_CHUNK_GENERATION
+          printf("Sending new chunks (%d, %d)\n", _x, _z);
+          clock_t start, end;
+          start = clock();
+        #endif
 
         uint32_t r = fast_rand();
         // One in every 4 new chunks spawns a mob
@@ -331,42 +306,60 @@ void handlePacket (int client_fd, int length, int packet_id) {
           dz += dz > 0 ? -1 : 1;
         }
 
-        end = clock();
-        double total_ms = (double)(end - start) / CLOCKS_PER_SEC * 1000;
-        printf("generated %d chunks in %.0f ms (%.2f ms per chunk)\n", count, total_ms, total_ms / (double)count);
+        #ifdef DEV_LOG_CHUNK_GENERATION
+          end = clock();
+          double total_ms = (double)(end - start) / CLOCKS_PER_SEC * 1000;
+          printf("Generated %d chunks in %.0f ms (%.2f ms per chunk)\n", count, total_ms, total_ms / (double)count);
+        #endif
 
-        return;
       }
       break;
 
     case 0x34:
-      if (state == STATE_PLAY) {
-        cs_setHeldItem(client_fd);
-        return;
-      }
+      if (state == STATE_PLAY) cs_setHeldItem(client_fd);
       break;
 
     case 0x28:
-      if (state == STATE_PLAY) {
-        cs_playerAction(client_fd);
-        return;
-      }
+      if (state == STATE_PLAY) cs_playerAction(client_fd);
       break;
 
     case 0x3F:
-      if (state == STATE_PLAY) {
-        cs_useItemOn(client_fd);
-        return;
-      }
+      if (state == STATE_PLAY) cs_useItemOn(client_fd);
       break;
 
-    default: break;
+    default:
+      #ifdef DEV_LOG_UNKNOWN_PACKETS
+        printf("Unknown packet: 0x");
+        if (packet_id < 16) printf("0");
+        printf("%X, length: %d, state: %d\n\n", packet_id, length, state);
+      #endif
+      recv_all(client_fd, recv_buffer, length, false);
+      break;
 
   }
 
-  // if (packet_id < 16) printf("Unknown/bad packet: 0x0%X, length: %d, state: %d\n\n", packet_id, length, state);
-  // else printf("Unknown/bad packet: 0x%X, length: %d, state: %d\n\n", packet_id, length, state);
-  recv_count = recv(client_fd, recv_buffer, length, 0);
+  // Detect and fix incorrectly parsed packets
+  int processed_length = total_bytes_received - bytes_received_start;
+  if (processed_length == length) return;
+
+  if (length > processed_length) {
+    recv_all(client_fd, recv_buffer, length - processed_length, false);
+  }
+
+  #ifdef DEV_LOG_LENGTH_DISCREPANCY
+  if (processed_length != 0) {
+    printf("WARNING: Packet 0x");
+    if (packet_id < 16) printf("0");
+    printf("%X parsed incorrectly!\n  Expected: %d, parsed: %d\n\n", packet_id, length, processed_length);
+  }
+  #endif
+  #ifdef DEV_LOG_UNKNOWN_PACKETS
+  if (processed_length == 0) {
+    printf("Unknown packet: 0x");
+    if (packet_id < 16) printf("0");
+    printf("%X, length: %d, state: %d\n\n", packet_id, length, state);
+  }
+  #endif
 
 }
 
