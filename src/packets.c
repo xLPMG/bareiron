@@ -958,8 +958,8 @@ int cs_chat (int client_fd) {
   if (has_signature) recv_all(client_fd, recv_buffer, 256, false);
 
   readVarInt(client_fd); // Ignore message count
-  readUint32(client_fd); // Ignore acknowledgement bitmask
-  readByte(client_fd); // Ignore checksum
+  // Ignore acknowledgement bitmask and checksum
+  recv_all(client_fd, recv_buffer, 4, false);
 
   return 0;
 }
