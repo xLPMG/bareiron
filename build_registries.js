@@ -42,7 +42,10 @@ const blockWhitelist = [
   "lava",
   "snowy_grass_block",
   "mud",
-  "moss_carpet"
+  "moss_carpet",
+  "oak_slab",
+  "stone_slab",
+  "cobblestone_slab"
 ];
 
 // Currently, only 4 biome types are supported, excluding "beach"
@@ -332,8 +335,11 @@ async function convert () {
     "block": {
       "mineable/pickaxe": [
         itemsAndBlocks.blockRegistry["stone"],
+        itemsAndBlocks.blockRegistry["stone_slab"],
         itemsAndBlocks.blockRegistry["cobblestone"],
+        itemsAndBlocks.blockRegistry["cobblestone_slab"],
         itemsAndBlocks.blockRegistry["sandstone"],
+        itemsAndBlocks.blockRegistry["sandstone_slab"],
         itemsAndBlocks.blockRegistry["ice"],
         itemsAndBlocks.blockRegistry["diamond_ore"],
         itemsAndBlocks.blockRegistry["gold_ore"],
@@ -345,6 +351,8 @@ async function convert () {
       "mineable/axe": [
         itemsAndBlocks.blockRegistry["oak_log"],
         itemsAndBlocks.blockRegistry["oak_planks"],
+        itemsAndBlocks.blockRegistry["oak_wood"],
+        itemsAndBlocks.blockRegistry["oak_slab"],
         itemsAndBlocks.blockRegistry["crafting_table"]
       ],
       "mineable/shovel": [
@@ -352,6 +360,7 @@ async function convert () {
         itemsAndBlocks.blockRegistry["dirt"],
         itemsAndBlocks.blockRegistry["sand"],
         itemsAndBlocks.blockRegistry["snow"],
+        itemsAndBlocks.blockRegistry["snow_block"],
         itemsAndBlocks.blockRegistry["mud"]
       ],
     },

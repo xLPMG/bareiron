@@ -413,7 +413,10 @@ uint8_t isInstantlyMined (PlayerData *player, uint8_t block) {
 
   uint16_t held_item = player->inventory_items[player->hotbar];
 
-  if (block == B_snow) return (
+  if (
+    block == B_snow ||
+    block == B_snow_block
+  ) return (
     held_item == I_stone_shovel ||
     held_item == I_iron_shovel ||
     held_item == I_diamond_shovel ||
