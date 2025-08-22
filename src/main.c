@@ -227,6 +227,7 @@ void handlePacket (int client_fd, int length, int packet_id) {
         // Prevent players from leaving the world
         if (cy < 0) {
           cy = 0;
+          player->grounded_y = 0;
           sc_synchronizePlayerPosition(client_fd, cx, 0, cz, player->yaw * 180 / 127, player->pitch * 90 / 127);
         } else if (cy > 255) {
           cy = 255;
