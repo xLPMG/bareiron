@@ -266,22 +266,32 @@ void handlePacket (int client_fd, int length, int packet_id) {
           // at a random position within the chunk
           short mob_x = (_x + dx * VIEW_DISTANCE) * 16 + ((r >> 4) & 15);
           short mob_z = (_z + dz * VIEW_DISTANCE) * 16 + ((r >> 8) & 15);
-          uint8_t mob_y = getHeightAt(mob_x, mob_z) + 1;
-          // Ensure that there's space to spawn the mob
-          if (
-            getBlockAt(mob_x, mob_y, mob_z) == B_air &&
-            getBlockAt(mob_x, mob_y + 1, mob_z) == B_air
-          ) {
-            // Spawn passive mobs during the day, hostiles during the night
-            if (world_time < 13000) {
-              uint32_t mob_choice = (r >> 12) & 3;
-              if (mob_choice == 0) spawnMob(25, mob_x, mob_y, mob_z, 20); // Chicken
-              else if (mob_choice == 1) spawnMob(28, mob_x, mob_y, mob_z, 20); // Cow
-              else if (mob_choice == 2) spawnMob(95, mob_x, mob_y, mob_z, 20); // Pig
-              else if (mob_choice == 3) spawnMob(106, mob_x, mob_y, mob_z, 20); // Sheep
-            } else {
-              spawnMob(145, mob_x, mob_y, mob_z, 20); // Zombie
-            }
+          // Start at the Y coordinate of the spawning player and move upward
+          // until a valid space is found
+          uint8_t mob_y = cy;
+          uint8_t b_low = getBlockAt(mob_x, mob_y - 1, mob_z);
+          uint8_t b_mid = getBlockAt(mob_x, mob_y, mob_z);
+          uint8_t b_top = getBlockAt(mob_x, mob_y + 1, mob_z);
+          while (mob_y < 255) {
+            if ( // Solid block below, non-solid at feet and above
+              !isPassableBlock(b_low) &&
+              isPassableBlock(b_mid) &&
+              isPassableBlock(b_top)
+            ) break;
+            b_low = b_mid;
+            b_mid = b_top;
+            b_top = getBlockAt(mob_x, mob_y + 2, mob_z);
+            mob_y ++;
+          }
+          // Spawn passive mobs during the day, hostiles during the night
+          if (world_time < 13000) {
+            uint32_t mob_choice = (r >> 12) & 3;
+            if (mob_choice == 0) spawnMob(25, mob_x, mob_y, mob_z, 20); // Chicken
+            else if (mob_choice == 1) spawnMob(28, mob_x, mob_y, mob_z, 20); // Cow
+            else if (mob_choice == 2) spawnMob(95, mob_x, mob_y, mob_z, 20); // Pig
+            else if (mob_choice == 3) spawnMob(106, mob_x, mob_y, mob_z, 20); // Sheep
+          } else {
+            spawnMob(145, mob_x, mob_y, mob_z, 20); // Zombie
           }
         }
 
