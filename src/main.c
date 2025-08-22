@@ -157,9 +157,19 @@ void handlePacket (int client_fd, int length, int packet_id) {
       }
       break;
 
+    case 0x1B: {
+      if (state == STATE_PLAY) {
+        // Serverbound keep-alive (ignored)
+        recv_all(client_fd, recv_buffer, 8, false);
+        return;
+      }
+      break;
+    }
+
     case 0x1D:
     case 0x1E:
     case 0x1F:
+    case 0x20:
       if (state == STATE_PLAY) {
 
         double x, y, z;
@@ -169,16 +179,11 @@ void handlePacket (int client_fd, int length, int packet_id) {
         // Read player position (and rotation)
         if (packet_id == 0x1D) cs_setPlayerPosition(client_fd, &x, &y, &z, &on_ground);
         else if (packet_id == 0x1F) cs_setPlayerRotation (client_fd, &yaw, &pitch, &on_ground);
+        else if (packet_id == 0x20) cs_setPlayerMovementFlags (client_fd, &on_ground);
         else cs_setPlayerPositionAndRotation(client_fd, &x, &y, &z, &yaw, &pitch, &on_ground);
 
         PlayerData *player;
         if (getPlayerData(client_fd, &player)) break;
-
-        // Update rotation in player data (if applicable)
-        if (packet_id != 0x1D) {
-          player->yaw = ((short)(yaw + 540) % 360 - 180) * 127 / 180;
-          player->pitch = pitch / 90.0f * 127.0f;
-        }
 
         // Handle fall damage
         if (on_ground) {
@@ -190,6 +195,15 @@ void handlePacket (int client_fd, int length, int packet_id) {
             sc_setHealth(client_fd, player->health, player->hunger);
           }
           player->grounded_y = player->y;
+        }
+
+        // Don't continue if all we got were flags
+        if (packet_id == 0x20) return;
+
+        // Update rotation in player data (if applicable)
+        if (packet_id != 0x1D) {
+          player->yaw = ((short)(yaw + 540) % 360 - 180) * 127 / 180;
+          player->pitch = pitch / 90.0f * 127.0f;
         }
 
         // Broadcast player position to other players

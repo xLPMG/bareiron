@@ -651,6 +651,13 @@ int cs_setPlayerRotation (int client_fd, float *yaw, float *pitch, uint8_t *on_g
   return 0;
 }
 
+int cs_setPlayerMovementFlags (int client_fd, uint8_t *on_ground) {
+
+  *on_ground = readByte(client_fd) & 0x01;
+
+  return 0;
+}
+
 // C->S Set Held Item (serverbound)
 int cs_setHeldItem (int client_fd) {
 
