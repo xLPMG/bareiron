@@ -1,6 +1,7 @@
 #ifndef H_PACKETS
 #define H_PACKETS
 
+// Serverbound packets
 int cs_handshake (int client_fd);
 int cs_loginStart (int client_fd, uint8_t *uuid, char *name);
 int cs_clientInformation (int client_fd);
@@ -17,6 +18,7 @@ int cs_closeContainer (int client_fd);
 int cs_clientStatus (int client_fd);
 int cs_chat(int client_fd);
 
+// Clientbound packets
 int sc_loginSuccess (int client_fd, uint8_t *uuid, char *name);
 int sc_knownPacks (int client_fd);
 int sc_finishConfiguration (int client_fd);
@@ -44,6 +46,9 @@ int sc_damageEvent (int client_fd, int id, int type);
 int sc_setHealth (int client_fd, uint8_t health, uint8_t food);
 int sc_respawn (int client_fd);
 int sc_systemChat (int client_fd, char* message, uint16_t len);
+int cs_interact (int client_fd);
+int sc_entityEvent (int client_fd, int entity_id, uint8_t status);
+int sc_removeEntity (int client_fd, int entity_id);
 int sc_registries (int client_fd);
 
 #endif

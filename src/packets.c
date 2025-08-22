@@ -973,6 +973,52 @@ int cs_chat (int client_fd) {
   return 0;
 }
 
+// C->S Interact
+int cs_interact (int client_fd) {
+
+  int entity_id = readVarInt(client_fd);
+  uint8_t type = readByte(client_fd);
+
+  if (type == 2) {
+    // Ignore target coordinates
+    recv_all(client_fd, recv_buffer, 12, false);
+  }
+  if (type != 1) {
+    // Ignore hand
+    recv_all(client_fd, recv_buffer, 1, false);
+  }
+
+  // Ignore sneaking flag
+  recv_all(client_fd, recv_buffer, 1, false);
+
+  hurtEntity(entity_id, client_fd, D_generic, 1);
+
+  return 0;
+}
+
+// S->C Entity Event
+int sc_entityEvent (int client_fd, int entity_id, uint8_t status) {
+
+  writeVarInt(client_fd, 6);
+  writeByte(client_fd, 0x1E);
+
+  writeUint32(client_fd, entity_id);
+  writeByte(client_fd, status);
+
+  return 0;
+}
+
+// S->C Remove Entities, but for only one entity per packet
+int sc_removeEntity (int client_fd, int entity_id) {
+
+  writeVarInt(client_fd, 2 + sizeVarInt(entity_id));
+  writeByte(client_fd, 0x46);
+
+  writeByte(client_fd, 1);
+  writeVarInt(client_fd, entity_id);
+
+}
+
 // S->C Registry Data (multiple packets) and Update Tags (configuration, multiple packets)
 int sc_registries (int client_fd) {
 

@@ -485,7 +485,7 @@ void handlePlayerAction (PlayerData *player, int action, short x, short y, short
 
 }
 
-void spawnMob (uint8_t type, short x, uint8_t y, short z) {
+void spawnMob (uint8_t type, short x, uint8_t y, short z, uint8_t health) {
 
   for (int i = 0; i < MAX_MOBS; i ++) {
     // Look for type 0 (unallocated)
@@ -496,6 +496,7 @@ void spawnMob (uint8_t type, short x, uint8_t y, short z) {
     mob_data[i].x = x;
     mob_data[i].y = y;
     mob_data[i].z = z;
+    mob_data[i].data = health & 31;
 
     // Broadcast entity creation to all players
     for (int j = 0; j < MAX_PLAYERS; j ++) {
@@ -511,6 +512,56 @@ void spawnMob (uint8_t type, short x, uint8_t y, short z) {
     }
 
     break;
+  }
+
+}
+
+void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t damage) {
+
+  // Retrieve player data if applicable
+  PlayerData *player;
+  if (attacker_id < 65536 && attacker_id != -1) {
+    if (getPlayerData(attacker_id, &player)) return;
+  } else if (entity_id < 65536) {
+    if (getPlayerData(entity_id, &player)) return;
+  }
+
+  if (attacker_id < 65536 && attacker_id != -1) { // Attacker is a player
+    // Scale damage based on held item
+    uint16_t held_item = player->inventory_items[player->hotbar];
+    if (held_item == I_wooden_sword) damage *= 4;
+    else if (held_item == I_golden_sword) damage *= 4;
+    else if (held_item == I_stone_sword) damage *= 5;
+    else if (held_item == I_iron_sword) damage *= 6;
+    else if (held_item == I_diamond_sword) damage *= 7;
+    else if (held_item == I_netherite_sword) damage *= 8;
+  }
+
+  // Whether this attack caused the target entity to die
+  uint8_t entity_died = false;
+
+  if (entity_id < 65536) { // The attacked entity is a player
+    if (player->health <= damage) {
+      player->health = 0;
+      entity_died = true;
+    } else player->health -= damage;
+    // Update health on the client
+    sc_setHealth(player->client_fd, player->health, player->hunger);
+  } else { // The attacked entity is a mob
+    MobData *mob = &mob_data[entity_id - 65536];
+    uint8_t mob_health = mob->data & 31;
+    if (mob_health <= damage) {
+      mob->data -= mob_health;
+      entity_died = true;
+    } else mob->data -= damage;
+  }
+
+  // Broadcast damage event to all players
+  for (int i = 0; i < MAX_PLAYERS; i ++) {
+    int client_fd = player_data[i].client_fd;
+    if (client_fd == -1) continue;
+    sc_damageEvent(client_fd, entity_id, damage_type);
+    if (entity_died) sc_entityEvent(client_fd, entity_id, 3);
   }
 
 }
@@ -540,6 +591,19 @@ void handleServerTick (int64_t time_since_last_tick) {
   for (int i = 0; i < MAX_MOBS; i ++) {
     if (mob_data[i].type == 0) continue;
 
+    // Mob has died, deallocate it
+    if ((mob_data[i].data & 31) == 0) {
+      mob_data[i].type = 0;
+      for (int j = 0; j < MAX_PLAYERS; j ++) {
+        if (player_data[j].client_fd == -1) continue;
+        // Spawn death smoke particles
+        sc_entityEvent(player_data[j].client_fd, 65536 + i, 60);
+        // Remove the entity from the client
+        sc_removeEntity(player_data[j].client_fd, 65536 + i);
+      }
+      continue;
+    }
+
     uint8_t passive = (
       mob_data[i].type == 25 || // Chicken
       mob_data[i].type == 28 || // Cow
@@ -554,7 +618,7 @@ void handleServerTick (int64_t time_since_last_tick) {
 
     // Find the player closest to this mob
     PlayerData* closest_player;
-    uint32_t closest_dist = 65535;
+    uint32_t closest_dist = 65536;
     for (int j = 0; j < MAX_PLAYERS; j ++) {
       if (player_data[j].client_fd == -1) continue;
       uint16_t curr_dist = (
@@ -594,10 +658,7 @@ void handleServerTick (int64_t time_since_last_tick) {
 
       // If we're already next to the player, hurt them and skip movement
       if (closest_dist < 3) {
-        if (closest_player->health < 6) closest_player->health = 0;
-        else closest_player->health -= 6;
-        sc_damageEvent(closest_player->client_fd, closest_player->client_fd, D_generic);
-        sc_setHealth(closest_player->client_fd, closest_player->health, closest_player->hunger);
+        hurtEntity(closest_player->client_fd, 65536 + i, D_generic, 6);
         continue;
       }
 

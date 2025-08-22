@@ -158,14 +158,20 @@ void handlePacket (int client_fd, int length, int packet_id) {
       }
       break;
 
-    case 0x1B: {
+    case 0x1B:
       if (state == STATE_PLAY) {
         // Serverbound keep-alive (ignored)
         recv_all(client_fd, recv_buffer, 8, false);
         return;
       }
       break;
-    }
+
+    case 0x19:
+      if (state == STATE_PLAY) {
+        if (cs_interact(client_fd)) break;
+        return;
+      }
+      break;
 
     case 0x1D:
     case 0x1E:
@@ -190,10 +196,7 @@ void handlePacket (int client_fd, int length, int packet_id) {
         if (on_ground) {
           int8_t damage = player->grounded_y - player->y - 3;
           if (damage > 0 && getBlockAt(player->x, player->y, player->z) != B_water) {
-            if (damage >= player->health) player->health = 0;
-            else player->health -= damage;
-            sc_damageEvent(client_fd, client_fd, D_fall);
-            sc_setHealth(client_fd, player->health, player->hunger);
+            hurtEntity(client_fd, -1, D_fall, damage);
           }
           player->grounded_y = player->y;
         }
@@ -295,14 +298,14 @@ void handlePacket (int client_fd, int length, int packet_id) {
             getBlockAt(mob_x, mob_y + 1, mob_z) == B_air
           ) {
             // Spawn passive mobs during the day, hostiles during the night
-            if (world_time < 12000) {
+            if (world_time < 13000) {
               uint32_t mob_choice = (r >> 12) & 3;
-              if (mob_choice == 0) spawnMob(25, mob_x, mob_y, mob_z); // Chicken
-              else if (mob_choice == 1) spawnMob(28, mob_x, mob_y, mob_z); // Cow
-              else if (mob_choice == 2) spawnMob(95, mob_x, mob_y, mob_z); // Pig
-              else if (mob_choice == 3) spawnMob(106, mob_x, mob_y, mob_z); // Sheep
+              if (mob_choice == 0) spawnMob(25, mob_x, mob_y, mob_z, 20); // Chicken
+              else if (mob_choice == 1) spawnMob(28, mob_x, mob_y, mob_z, 20); // Cow
+              else if (mob_choice == 2) spawnMob(95, mob_x, mob_y, mob_z, 20); // Pig
+              else if (mob_choice == 3) spawnMob(106, mob_x, mob_y, mob_z, 20); // Sheep
             } else {
-              spawnMob(145, mob_x, mob_y, mob_z); // Zombie
+              spawnMob(145, mob_x, mob_y, mob_z, 20); // Zombie
             }
           }
         }

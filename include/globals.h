@@ -93,6 +93,9 @@ typedef struct {
   short x;
   uint8_t y;
   short z;
+  // Lower 5 bits: health
+  // Upper 3 bits: reserved (?)
+  uint8_t data;
 } MobData;
 
 #pragma pack(pop)

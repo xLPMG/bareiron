@@ -31,7 +31,8 @@ uint16_t getMiningResult (uint16_t held_item, uint8_t block);
 void bumpToolDurability (PlayerData *player);
 void handlePlayerAction (PlayerData *player, int action, short x, short y, short z);
 
-void spawnMob (uint8_t type, short x, uint8_t y, short z);
+void spawnMob (uint8_t type, short x, uint8_t y, short z, uint8_t health);
+void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t damage);
 void handleServerTick (int64_t time_since_last_tick);
 
 #endif
