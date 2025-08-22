@@ -576,7 +576,7 @@ void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t da
       entity_died = true;
     } else player->health -= damage;
     // Update health on the client
-    sc_setHealth(player->client_fd, player->health, player->hunger);
+    sc_setHealth(entity_id, player->health, player->hunger);
   } else { // The attacked entity is a mob
     MobData *mob = &mob_data[entity_id - 65536];
     uint8_t mob_health = mob->data & 31;
