@@ -580,14 +580,14 @@ void handleServerTick (int64_t time_since_last_tick) {
 
       // Move by one block on the X or Z axis
       // Yaw is set to face in the direction of motion
-    if ((r >> 2) & 1) {
-      if ((r >> 1) & 1) { new_x += 1; yaw = 192; }
-      else { new_x -= 1; yaw = 64; }
-    } else {
-      if ((r >> 1) & 1) { new_z += 1; yaw = 0; }
-      else { new_z -= 1; yaw = 128; }
-    }
-    // Vary the yaw angle to look just a little less robotic
+      if ((r >> 2) & 1) {
+        if ((r >> 1) & 1) { new_x += 1; yaw = 192; }
+        else { new_x -= 1; yaw = 64; }
+      } else {
+        if ((r >> 1) & 1) { new_z += 1; yaw = 0; }
+        else { new_z -= 1; yaw = 128; }
+      }
+      // Vary the yaw angle to look just a little less robotic
       yaw += ((r >> 7) & 31) - 16;
 
     } else { // Hostile mob movement handling
