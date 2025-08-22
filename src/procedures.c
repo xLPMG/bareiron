@@ -45,6 +45,8 @@ int getClientIndex (int client_fd) {
 void resetPlayerData (PlayerData *player) {
   player->health = 20;
   player->hunger = 20;
+  player->x = 8;
+  player->z = 8;
   player->y = -32767;
   player->grounded_y = 0;
   for (int i = 0; i < 41; i ++) {
