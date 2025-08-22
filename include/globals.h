@@ -22,6 +22,8 @@
 #define MAX_PLAYERS 16
 // How many mobs to allocate memory for
 #define MAX_MOBS (MAX_PLAYERS)
+// Manhattan distance at which mobs despawn
+#define MOB_DESPAWN_DISTANCE 256
 // Server game mode: 0 - survival; 1 - creative; 2 - adventure; 3 - spectator
 #define GAMEMODE 0
 // Max render distance, determines how many chunks to send

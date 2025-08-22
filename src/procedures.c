@@ -545,6 +545,24 @@ void handleServerTick (int64_t time_since_last_tick) {
     // Skip 50% of ticks randomly
     if (r & 1) continue;
 
+    // Find the player closest to this mob
+    uint16_t closest_x = 65535, closest_z = 65535;
+    for (int j = 0; j < MAX_PLAYERS; j ++) {
+      if (player_data[j].client_fd == -1) continue;
+      uint16_t dist_x = abs(mob_data[i].x - player_data[j].x);
+      uint16_t dist_z = abs(mob_data[i].z - player_data[j].z);
+      if (dist_x + dist_z < closest_x + closest_z) {
+        closest_x = dist_x;
+        closest_z = dist_z;
+      }
+    }
+
+    // Despawn mobs past a certain distance from nearest player
+    if (closest_x + closest_z > MOB_DESPAWN_DISTANCE) {
+      mob_data[i].type = 0;
+      continue;
+    }
+
     // Move by one block on the X or Z axis
     // Yaw is set to face in the direction of motion
     short new_x = mob_data[i].x, new_z = mob_data[i].z;
