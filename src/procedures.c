@@ -47,7 +47,8 @@ void resetPlayerData (PlayerData *player) {
   player->hunger = 20;
   player->x = 8;
   player->z = 8;
-  player->y = -32767;
+  player->y = 0;
+  player->flags &= 0x02;
   player->grounded_y = 0;
   for (int i = 0; i < 41; i ++) {
     player->inventory_items[i] = 0;
@@ -203,7 +204,7 @@ void spawnPlayer (PlayerData *player) {
   float spawn_x = 8.5f, spawn_y = 80.0f, spawn_z = 8.5f;
   float spawn_yaw = 0.0f, spawn_pitch = 0.0f;
 
-  if (player->y == -32767) { // Is this a new player?
+  if ((player->flags & 0x02) == 0) { // Is this a new player?
     // Determine spawning Y coordinate based on terrain height
     spawn_y = getHeightAt(8, 8) + 1;
   } else { // Not a new player

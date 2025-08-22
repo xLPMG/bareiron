@@ -76,7 +76,7 @@ typedef struct {
   char name[16];
   int client_fd;
   short x;
-  short y;
+  uint8_t y;
   short z;
   short visited_x[VISITED_HISTORY];
   short visited_z[VISITED_HISTORY];
@@ -94,6 +94,7 @@ typedef struct {
   uint8_t inventory_count[41];
   uint8_t craft_count[9];
   // 0x01 - attack cooldown
+  // 0x02 - has not spawned yet
   uint8_t flags;
 } PlayerData;
 

@@ -167,7 +167,7 @@ void handlePacket (int client_fd, int length, int packet_id) {
 
         // Handle fall damage
         if (on_ground) {
-          int8_t damage = player->grounded_y - player->y - 3;
+          int16_t damage = player->grounded_y - player->y - 3;
           if (damage > 0 && getBlockAt(player->x, player->y, player->z) != B_water) {
             hurtEntity(client_fd, -1, D_fall, damage);
           }
@@ -223,6 +223,15 @@ void handlePacket (int client_fd, int length, int packet_id) {
         // Calculate distance between previous and current chunk coordinates
         short dx = _x - (player->x < 0 ? player->x - 16 : player->x) / 16;
         short dz = _z - (player->z < 0 ? player->z - 16 : player->z) / 16;
+
+        // Prevent players from leaving the world
+        if (cy < 0) {
+          cy = 0;
+          sc_synchronizePlayerPosition(client_fd, cx, 0, cz, player->yaw * 180 / 127, player->pitch * 90 / 127);
+        } else if (cy > 255) {
+          cy = 255;
+          sc_synchronizePlayerPosition(client_fd, cx, 255, cz, player->yaw * 180 / 127, player->pitch * 90 / 127);
+        }
 
         // Update position in player data
         player->x = cx;
