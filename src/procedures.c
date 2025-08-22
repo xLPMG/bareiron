@@ -448,6 +448,19 @@ uint8_t isColumnBlock (uint8_t block) {
 
 }
 
+uint8_t isPassableBlock (uint8_t block) {
+
+  return (
+    block == B_air ||
+    block == B_water ||
+    block == B_moss_carpet ||
+    block == B_short_grass ||
+    block == B_dead_bush ||
+    block == B_torch
+  );
+
+}
+
 void handlePlayerAction (PlayerData *player, int action, short x, short y, short z) {
 
   // In creative, only the "start mining" action is sent
@@ -693,16 +706,22 @@ void handleServerTick (int64_t time_since_last_tick) {
 
     }
 
-    // Check if the block we're moving into is passable:
+    // Check if the blocks we're moving into are passable:
     //   if yes, and the block below is solid, keep the same Y level;
     //   if yes, but the block below isn't solid, drop down one block;
     //   if not, go up by up to one block;
     //   if going up isn't possible, skip this iteration.
     uint8_t block = getBlockAt(new_x, new_y, new_z);
-    if (block != B_air) {
-      if (getBlockAt(new_x, new_y + 1, new_z) == B_air) new_y += 1;
+    uint8_t block_above = getBlockAt(new_x, new_y + 1, new_z);
+    if (!isPassableBlock(block) || !isPassableBlock(block_above)) {
+      block = block_above;
+      block_above = getBlockAt(new_x, new_y + 2, new_z);
+      if (isPassableBlock(block) && isPassableBlock(block_above)) new_y += 1;
       else continue;
-    } else if (getBlockAt(new_x, new_y - 1, new_z) == B_air) new_y -= 1;
+    } else {
+      uint8_t block_below = getBlockAt(new_x, new_y - 1, new_z);
+      if (isPassableBlock(block_below)) new_y -= 1;
+    }
 
     // Store new mob position
     mob_data[i].x = new_x;
