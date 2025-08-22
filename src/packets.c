@@ -259,7 +259,7 @@ int sc_updateTime (int client_fd, uint64_t ticks) {
   writeVarInt(client_fd, sizeVarInt(0x6A) + 17);
   writeVarInt(client_fd, 0x6A);
 
-  writeUint64(client_fd, ticks);
+  writeUint64(client_fd, get_program_time() / 50000);
   writeUint64(client_fd, ticks);
   writeByte(client_fd, true);
 

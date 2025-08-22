@@ -29,7 +29,7 @@ uint8_t recv_buffer[256] = {0};
 uint32_t world_seed = 0xA103DE6C;
 uint32_t rng_seed = 0xE2B9419;
 
-uint64_t world_time = 0;
+uint16_t world_time = 0;
 
 uint16_t client_count;
 

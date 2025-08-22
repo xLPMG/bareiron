@@ -504,7 +504,7 @@ void spawnMob (uint8_t type, short x, uint8_t y, short z) {
         player_data[j].client_fd,
         65536 + i, // Try to avoid conflict with client file descriptors
         recv_buffer, // The UUID doesn't matter, feed it garbage
-        type, x, y, z,
+        type, (double)x + 0.5f, y, (double)z + 0.5f,
         // Face opposite of the player, as if looking at them when spawning
         (player_data[j].yaw + 127) & 255, 0
       );
@@ -520,7 +520,7 @@ void spawnMob (uint8_t type, short x, uint8_t y, short z) {
 void handleServerTick (int64_t time_since_last_tick) {
 
   // Send Keep Alive and Update Time packets to all in-game clients
-  world_time += 20 * time_since_last_tick / 1000000;
+  world_time = (world_time + 20 * time_since_last_tick / 1000000) % 24000;
   for (int i = 0; i < MAX_PLAYERS; i ++) {
     if (player_data[i].client_fd == -1) continue;
     sc_keepAlive(player_data[i].client_fd);
@@ -540,33 +540,46 @@ void handleServerTick (int64_t time_since_last_tick) {
   for (int i = 0; i < MAX_MOBS; i ++) {
     if (mob_data[i].type == 0) continue;
 
+    uint8_t passive = (
+      mob_data[i].type == 25 || // Chicken
+      mob_data[i].type == 28 || // Cow
+      mob_data[i].type == 95 || // Pig
+      mob_data[i].type == 106 // Sheep
+    );
+
     uint32_t r = fast_rand();
 
-    // Skip 50% of ticks randomly
-    if (r & 1) continue;
+    // Skip 25% of passive mob ticks randomly
+    if (passive && (r & 3)) continue;
 
     // Find the player closest to this mob
-    uint16_t closest_x = 65535, closest_z = 65535;
+    PlayerData* closest_player;
+    uint32_t closest_dist = 65535;
     for (int j = 0; j < MAX_PLAYERS; j ++) {
       if (player_data[j].client_fd == -1) continue;
-      uint16_t dist_x = abs(mob_data[i].x - player_data[j].x);
-      uint16_t dist_z = abs(mob_data[i].z - player_data[j].z);
-      if (dist_x + dist_z < closest_x + closest_z) {
-        closest_x = dist_x;
-        closest_z = dist_z;
+      uint16_t curr_dist = (
+        abs(mob_data[i].x - player_data[j].x) +
+        abs(mob_data[i].z - player_data[j].z)
+      );
+      if (curr_dist < closest_dist) {
+        closest_dist = curr_dist;
+        closest_player = &player_data[j];
       }
     }
 
     // Despawn mobs past a certain distance from nearest player
-    if (closest_x + closest_z > MOB_DESPAWN_DISTANCE) {
+    if (closest_dist > MOB_DESPAWN_DISTANCE) {
       mob_data[i].type = 0;
       continue;
     }
 
-    // Move by one block on the X or Z axis
-    // Yaw is set to face in the direction of motion
     short new_x = mob_data[i].x, new_z = mob_data[i].z;
-    uint8_t yaw;
+    uint8_t new_y = mob_data[i].y, yaw = 0;
+
+    if (passive) { // Passive mob movement handling
+
+      // Move by one block on the X or Z axis
+      // Yaw is set to face in the direction of motion
     if ((r >> 2) & 1) {
       if ((r >> 1) & 1) { new_x += 1; yaw = 192; }
       else { new_x -= 1; yaw = 64; }
@@ -575,14 +588,42 @@ void handleServerTick (int64_t time_since_last_tick) {
       else { new_z -= 1; yaw = 128; }
     }
     // Vary the yaw angle to look just a little less robotic
-    yaw += ((r >> 6) & 15) - 8;
+      yaw += ((r >> 7) & 31) - 16;
+
+    } else { // Hostile mob movement handling
+
+      // If we're already next to the player, hurt them and skip movement
+      if (closest_dist < 3) {
+        if (closest_player->health < 6) closest_player->health = 0;
+        else closest_player->health -= 6;
+        sc_damageEvent(closest_player->client_fd, closest_player->client_fd, D_generic);
+        sc_setHealth(closest_player->client_fd, closest_player->health, closest_player->hunger);
+        continue;
+      }
+
+      // Move towards the closest player on 8 axis
+      // The condition nesting ensures a correct yaw at 45 degree turns
+      if (closest_player->x < mob_data[i].x) {
+        new_x -= 1; yaw = 64;
+        if (closest_player->z < mob_data[i].z) { new_z -= 1; yaw += 32; }
+        else if (closest_player->z > mob_data[i].z) { new_z += 1; yaw -= 32; }
+      }
+      else if (closest_player->x > mob_data[i].x) {
+        new_x += 1; yaw = 192;
+        if (closest_player->z < mob_data[i].z) { new_z -= 1; yaw -= 32; }
+        else if (closest_player->z > mob_data[i].z) { new_z += 1; yaw += 32; }
+      } else {
+        if (closest_player->z < mob_data[i].z) { new_z -= 1; yaw = 128; }
+        else if (closest_player->z > mob_data[i].z) { new_z += 1; yaw = 0; }
+      }
+
+    }
 
     // Check if the block we're moving into is passable:
     //   if yes, and the block below is solid, keep the same Y level;
     //   if yes, but the block below isn't solid, drop down one block;
     //   if not, go up by up to one block;
     //   if going up isn't possible, skip this iteration.
-    uint8_t new_y = mob_data[i].y;
     uint8_t block = getBlockAt(new_x, new_y, new_z);
     if (block != B_air) {
       if (getBlockAt(new_x, new_y + 1, new_z) == B_air) new_y += 1;

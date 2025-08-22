@@ -28,8 +28,8 @@
 #define GAMEMODE 0
 // Max render distance, determines how many chunks to send
 #define VIEW_DISTANCE 2
-// Time between server ticks in microseconds (default = 2s)
-#define TIME_BETWEEN_TICKS 2000000
+// Time between server ticks in microseconds (default = 1s)
+#define TIME_BETWEEN_TICKS 1000000
 // How many visited chunks to "remember"
 // The server will not re-send chunks that the player has recently been in
 #define VISITED_HISTORY 4
@@ -51,7 +51,7 @@ extern uint8_t recv_buffer[256];
 extern uint32_t world_seed;
 extern uint32_t rng_seed;
 
-extern uint64_t world_time;
+extern uint16_t world_time;
 
 extern uint16_t client_count;
 

@@ -282,12 +282,28 @@ void handlePacket (int client_fd, int length, int packet_id) {
         start = clock();
 
         uint32_t r = fast_rand();
+        // One in every 4 new chunks spawns a mob
         if ((r & 3) == 0) {
+          // The mob is placed in the middle of the new chunk row,
+          // at a random position within the chunk
           short mob_x = (_x + dx * VIEW_DISTANCE) * 16 + ((r >> 4) & 15);
           short mob_z = (_z + dz * VIEW_DISTANCE) * 16 + ((r >> 8) & 15);
           uint8_t mob_y = getHeightAt(mob_x, mob_z) + 1;
-          if (getBlockAt(mob_x, mob_y, mob_z) == B_air) {
-            spawnMob(95, mob_x, mob_y, mob_z);
+          // Ensure that there's space to spawn the mob
+          if (
+            getBlockAt(mob_x, mob_y, mob_z) == B_air &&
+            getBlockAt(mob_x, mob_y + 1, mob_z) == B_air
+          ) {
+            // Spawn passive mobs during the day, hostiles during the night
+            if (world_time < 12000) {
+              uint32_t mob_choice = (r >> 12) & 3;
+              if (mob_choice == 0) spawnMob(25, mob_x, mob_y, mob_z); // Chicken
+              else if (mob_choice == 1) spawnMob(28, mob_x, mob_y, mob_z); // Cow
+              else if (mob_choice == 2) spawnMob(95, mob_x, mob_y, mob_z); // Pig
+              else if (mob_choice == 3) spawnMob(106, mob_x, mob_y, mob_z); // Sheep
+            } else {
+              spawnMob(145, mob_x, mob_y, mob_z); // Zombie
+            }
           }
         }
 
