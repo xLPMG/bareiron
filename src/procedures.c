@@ -47,7 +47,7 @@ void resetPlayerData (PlayerData *player) {
   player->hunger = 20;
   player->x = 8;
   player->z = 8;
-  player->y = 0;
+  player->y = 80;
   player->flags |= 0x02;
   player->grounded_y = 0;
   for (int i = 0; i < 41; i ++) {
