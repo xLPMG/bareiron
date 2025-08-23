@@ -430,7 +430,8 @@ uint8_t isInstantlyMined (PlayerData *player, uint8_t block) {
     block == B_dead_bush ||
     block == B_short_grass ||
     block == B_torch ||
-    block == B_lily_pad
+    block == B_lily_pad ||
+    block == B_oak_sapling
   );
 
 }
