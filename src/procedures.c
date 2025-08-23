@@ -549,14 +549,14 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
     uint8_t target = getBlockAt(x, y, z);
     if (target == B_crafting_table) {
       sc_openScreen(player->client_fd, 12, "Crafting", 8);
-      return 0;
+      return;
     } else if (target == B_furnace) {
       sc_openScreen(player->client_fd, 14, "Furnace", 7);
-      return 0;
+      return;
     } else if (target == B_composter) {
       // Check if the player is holding anything
       uint8_t *count = &player->inventory_count[player->hotbar];
-      if (*count == 0) return 0;
+      if (*count == 0) return;
       // Check if the item is a valid compost item
       uint16_t item = player->inventory_items[player->hotbar];
       uint32_t compost_chance = isCompostItem(item);
@@ -568,7 +568,7 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
         if (fast_rand() < compost_chance) {
           givePlayerItem(player, I_bone_meal, 1);
         }
-        return 0;
+        return;
       }
     }
   }
@@ -588,9 +588,9 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
   uint8_t block = I_to_B(*item);
 
   // if the selected item doesn't correspond to a block, exit
-  if (block == 0) return 0;
+  if (block == 0) return;
   // if the selected slot doesn't hold any items, exit
-  if (*count == 0) return 0;
+  if (*count == 0) return;
 
   // check if the block's placement conditions are met
   if (
