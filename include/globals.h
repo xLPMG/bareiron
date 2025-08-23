@@ -95,6 +95,7 @@ typedef struct {
   uint8_t craft_count[9];
   // 0x01 - attack cooldown
   // 0x02 - has not spawned yet
+  // 0x04 - sneaking
   uint8_t flags;
 } PlayerData;
 

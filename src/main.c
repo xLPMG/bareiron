@@ -335,6 +335,10 @@ void handlePacket (int client_fd, int length, int packet_id) {
       }
       break;
 
+    case 0x2A:
+      if (state == STATE_PLAY) cs_playerInput(client_fd);
+      break;
+
     case 0x34:
       if (state == STATE_PLAY) cs_setHeldItem(client_fd);
       break;

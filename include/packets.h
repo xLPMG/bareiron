@@ -49,6 +49,7 @@ int sc_systemChat (int client_fd, char* message, uint16_t len);
 int cs_interact (int client_fd);
 int sc_entityEvent (int client_fd, int entity_id, uint8_t status);
 int sc_removeEntity (int client_fd, int entity_id);
+int cs_playerInput (int client_fd);
 int sc_registries (int client_fd);
 
 #endif

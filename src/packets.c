@@ -490,13 +490,19 @@ int cs_useItemOn (int client_fd) {
   int sequence = readVarInt(client_fd);
   sc_acknowledgeBlockChange(client_fd, sequence);
 
-  uint8_t target = getBlockAt(x, y, z);
-  if (target == B_crafting_table) {
-    sc_openScreen(client_fd, 12, "Crafting", 8);
-    return 0;
-  } else if (target == B_furnace) {
-    sc_openScreen(client_fd, 14, "Furnace", 7);
-    return 0;
+  PlayerData *player;
+  if (getPlayerData(client_fd, &player)) return 1;
+
+  // Check interaction with containers when not sneaking
+  if (!(player->flags & 0x04)) {
+    uint8_t target = getBlockAt(x, y, z);
+    if (target == B_crafting_table) {
+      sc_openScreen(client_fd, 12, "Crafting", 8);
+      return 0;
+    } else if (target == B_furnace) {
+      sc_openScreen(client_fd, 14, "Furnace", 7);
+      return 0;
+    }
   }
 
   switch (face) {
@@ -508,9 +514,6 @@ int cs_useItemOn (int client_fd) {
     case 5: x += 1; break;
     default: break;
   }
-
-  PlayerData *player;
-  if (getPlayerData(client_fd, &player)) return 1;
 
   uint16_t *item = &player->inventory_items[player->hotbar];
   uint8_t *count = &player->inventory_count[player->hotbar];
@@ -1024,6 +1027,21 @@ int sc_removeEntity (int client_fd, int entity_id) {
 
   writeByte(client_fd, 1);
   writeVarInt(client_fd, entity_id);
+
+  return 0;
+}
+
+// C->S Player Input
+int cs_playerInput (int client_fd) {
+
+  uint8_t flags = readByte(client_fd);
+
+  PlayerData *player;
+  if (getPlayerData(client_fd, &player)) return 1;
+
+  // Set or clear sneaking flag
+  if (flags & 0x20) player->flags |= 0x04;
+  else player->flags &= ~0x04;
 
   return 0;
 }
