@@ -502,6 +502,23 @@ int cs_useItemOn (int client_fd) {
     } else if (target == B_furnace) {
       sc_openScreen(client_fd, 14, "Furnace", 7);
       return 0;
+    } else if (target == B_composter) {
+      // Check if the player is holding anything
+      uint8_t *count = &player->inventory_count[player->hotbar];
+      if (*count == 0) return 0;
+      // Check if the item is a valid compost item
+      uint16_t item = player->inventory_items[player->hotbar];
+      uint32_t compost_chance = isCompostItem(item);
+      if (compost_chance != 0) {
+        // Take away composted item
+        if ((*count -= 1) == 0) item = 0;
+        sc_setContainerSlot(client_fd, 0, serverSlotToClientSlot(0, player->hotbar), *count, item);
+        // Test compost chance and give bone meal on success
+        if (fast_rand() < compost_chance) {
+          givePlayerItem(player, I_bone_meal, 1);
+        }
+        return 0;
+      }
     }
   }
 

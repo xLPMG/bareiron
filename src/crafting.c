@@ -207,6 +207,24 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
       }
       break;
 
+    case 7:
+      switch (first_item) {
+        case I_oak_slab:
+          if (
+            identical &&
+            player->craft_items[1] == 0 &&
+            player->craft_items[4] == 0
+          ) {
+            *item = I_composter;
+            *count = 1;
+            return;
+          }
+          break;
+
+        default: break;
+      }
+      break;
+
     case 8:
       switch (first_item) {
         case I_cobblestone:

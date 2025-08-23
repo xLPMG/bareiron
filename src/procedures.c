@@ -472,6 +472,34 @@ uint8_t isReplaceableBlock (uint8_t block) {
   );
 }
 
+// Checks whether the given item can be used in a composter
+// Returns the probability (out of 2^32) to return bone meal
+uint32_t isCompostItem (uint16_t item) {
+
+  // Output values calculated using the following formula:
+  // P = 2^32 / (7 / compost_chance)
+
+  if ( // Compost chance: 30%
+    item == I_oak_leaves ||
+    item == I_short_grass ||
+    item == I_wheat_seeds ||
+    item == I_oak_sapling ||
+    item == I_moss_carpet
+  ) return 184070026;
+
+  if ( // Compost chance: 50%
+    item == I_cactus ||
+    item == I_sugar_cane
+  ) return 306783378;
+
+  if ( // Compost chance: 65%
+    item == I_apple ||
+    item == I_lily_pad
+  ) return 398818392;
+
+  return 0;
+}
+
 void handlePlayerAction (PlayerData *player, int action, short x, short y, short z) {
 
   // In creative, only the "start mining" action is sent
