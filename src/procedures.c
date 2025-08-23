@@ -7,6 +7,8 @@
 #include "packets.h"
 #include "registries.h"
 #include "worldgen.h"
+#include "structures.h"
+#include "procedures.h"
 
 int client_states[MAX_PLAYERS * 2];
 
@@ -573,6 +575,35 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
     }
   }
 
+  // If the selected slot doesn't hold any items, exit
+  uint8_t *count = &player->inventory_count[player->hotbar];
+  if (*count == 0) return;
+
+  // Check special item handling
+  uint16_t *item = &player->inventory_items[player->hotbar];
+  if (*item == I_bone_meal) {
+    uint8_t target = getBlockAt(x, y, z);
+    uint8_t target_below = getBlockAt(x, y - 1, z);
+    if (target == B_oak_sapling) {
+      // Consume the bone meal (yes, even before checks)
+      // Wasting bone meal on misplanted saplings is vanilla behavior
+      if ((*count -= 1) == 0) item = 0;
+      sc_setContainerSlot(player->client_fd, 0, serverSlotToClientSlot(0, player->hotbar), *count, *item);
+      if ( // Saplings can only grow when placed on these blocks
+        target_below == B_dirt ||
+        target_below == B_grass_block ||
+        target_below == B_snowy_grass_block
+      ) {
+        // Bone meal has a 25% chance of growing a tree from a sapling
+        if ((fast_rand() & 3) == 0) placeTreeStructure(x, y, z);
+      }
+    }
+  }
+
+  // If the selected item doesn't correspond to a block, exit
+  uint8_t block = I_to_B(*item);
+  if (block == 0) return;
+
   switch (face) {
     case 0: y -= 1; break;
     case 1: y += 1; break;
@@ -583,18 +614,9 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
     default: break;
   }
 
-  uint16_t *item = &player->inventory_items[player->hotbar];
-  uint8_t *count = &player->inventory_count[player->hotbar];
-  uint8_t block = I_to_B(*item);
-
-  // if the selected item doesn't correspond to a block, exit
-  if (block == 0) return;
-  // if the selected slot doesn't hold any items, exit
-  if (*count == 0) return;
-
-  // check if the block's placement conditions are met
+  // Check if the block's placement conditions are met
   if (
-    !( // player is not in the way
+    !( // Is player in the way?
       !isPassableBlock(block) &&
       x == player->x &&
       (y == player->y || y == player->y + 1) &&
@@ -603,15 +625,15 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
     isReplaceableBlock(getBlockAt(x, y, z)) &&
     (!isColumnBlock(block) || getBlockAt(x, y - 1, z) != B_air)
   ) {
-    // decrease item amount in selected slot
+    // Decrease item amount in selected slot
     *count -= 1;
-    // clear item id in slot if amount is zero
+    // Clear item id in slot if amount is zero
     if (*count == 0) *item = 0;
-    // apply server-side block change
+    // Apply server-side block change
     makeBlockChange(x, y, z, block);
   }
 
-  // sync hotbar contents to player
+  // Sync hotbar contents to player
   sc_setContainerSlot(player->client_fd, 0, serverSlotToClientSlot(0, player->hotbar), *count, *item);
 
 }
