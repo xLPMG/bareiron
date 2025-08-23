@@ -278,7 +278,7 @@ void handlePacket (int client_fd, int length, int packet_id) {
           short mob_z = (_z + dz * VIEW_DISTANCE) * 16 + ((r >> 8) & 15);
           // Start at the Y coordinate of the spawning player and move upward
           // until a valid space is found
-          uint8_t mob_y = cy;
+          uint8_t mob_y = cy - 8;
           uint8_t b_low = getBlockAt(mob_x, mob_y - 1, mob_z);
           uint8_t b_mid = getBlockAt(mob_x, mob_y, mob_z);
           uint8_t b_top = getBlockAt(mob_x, mob_y + 1, mob_z);
@@ -293,15 +293,17 @@ void handlePacket (int client_fd, int length, int packet_id) {
             b_top = getBlockAt(mob_x, mob_y + 2, mob_z);
             mob_y ++;
           }
-          // Spawn passive mobs during the day, hostiles during the night
-          if (world_time < 13000) {
-            uint32_t mob_choice = (r >> 12) & 3;
-            if (mob_choice == 0) spawnMob(25, mob_x, mob_y, mob_z, 20); // Chicken
-            else if (mob_choice == 1) spawnMob(28, mob_x, mob_y, mob_z, 20); // Cow
-            else if (mob_choice == 2) spawnMob(95, mob_x, mob_y, mob_z, 20); // Pig
-            else if (mob_choice == 3) spawnMob(106, mob_x, mob_y, mob_z, 20); // Sheep
-          } else {
-            spawnMob(145, mob_x, mob_y, mob_z, 20); // Zombie
+          if (mob_y != 255) {
+            // Spawn passive mobs during the day, hostiles during the night
+            if (world_time < 13000) {
+              uint32_t mob_choice = (r >> 12) & 3;
+              if (mob_choice == 0) spawnMob(25, mob_x, mob_y, mob_z, 20); // Chicken
+              else if (mob_choice == 1) spawnMob(28, mob_x, mob_y, mob_z, 20); // Cow
+              else if (mob_choice == 2) spawnMob(95, mob_x, mob_y, mob_z, 20); // Pig
+              else if (mob_choice == 3) spawnMob(106, mob_x, mob_y, mob_z, 20); // Sheep
+            } else {
+              spawnMob(145, mob_x, mob_y, mob_z, 20); // Zombie
+            }
           }
         }
 
