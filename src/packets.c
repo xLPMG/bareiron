@@ -493,78 +493,9 @@ int cs_useItemOn (int client_fd) {
   PlayerData *player;
   if (getPlayerData(client_fd, &player)) return 1;
 
-  // Check interaction with containers when not sneaking
-  if (!(player->flags & 0x04)) {
-    uint8_t target = getBlockAt(x, y, z);
-    if (target == B_crafting_table) {
-      sc_openScreen(client_fd, 12, "Crafting", 8);
-      return 0;
-    } else if (target == B_furnace) {
-      sc_openScreen(client_fd, 14, "Furnace", 7);
-      return 0;
-    } else if (target == B_composter) {
-      // Check if the player is holding anything
-      uint8_t *count = &player->inventory_count[player->hotbar];
-      if (*count == 0) return 0;
-      // Check if the item is a valid compost item
-      uint16_t item = player->inventory_items[player->hotbar];
-      uint32_t compost_chance = isCompostItem(item);
-      if (compost_chance != 0) {
-        // Take away composted item
-        if ((*count -= 1) == 0) item = 0;
-        sc_setContainerSlot(client_fd, 0, serverSlotToClientSlot(0, player->hotbar), *count, item);
-        // Test compost chance and give bone meal on success
-        if (fast_rand() < compost_chance) {
-          givePlayerItem(player, I_bone_meal, 1);
-        }
-        return 0;
-      }
-    }
-  }
-
-  switch (face) {
-    case 0: y -= 1; break;
-    case 1: y += 1; break;
-    case 2: z -= 1; break;
-    case 3: z += 1; break;
-    case 4: x -= 1; break;
-    case 5: x += 1; break;
-    default: break;
-  }
-
-  uint16_t *item = &player->inventory_items[player->hotbar];
-  uint8_t *count = &player->inventory_count[player->hotbar];
-  uint8_t block = I_to_B(*item);
-
-  // if the selected item doesn't correspond to a block, exit
-  if (block == 0) return 0;
-  // if the selected slot doesn't hold any items, exit
-  if (*count == 0) return 0;
-
-  // check if the block's placement conditions are met
-  if (
-    !( // player is not in the way
-      !isPassableBlock(block) &&
-      x == player->x &&
-      (y == player->y || y == player->y + 1) &&
-      z == player->z
-    ) &&
-    isReplaceableBlock(getBlockAt(x, y, z)) &&
-    (!isColumnBlock(block) || getBlockAt(x, y - 1, z) != B_air)
-  ) {
-    // decrease item amount in selected slot
-    *count -= 1;
-    // clear item id in slot if amount is zero
-    if (*count == 0) *item = 0;
-    // apply server-side block change
-    makeBlockChange(x, y, z, block);
-  }
-
-  // sync hotbar contents to player
-  sc_setContainerSlot(client_fd, 0, serverSlotToClientSlot(0, player->hotbar), *count, *item);
+  handlePlayerUseItem(player, x, y, z, face);
 
   return 0;
-
 }
 
 // C->S Click Container
