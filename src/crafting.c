@@ -268,14 +268,24 @@ void getSmeltingOutput (PlayerData *player) {
   uint8_t *material_count = &player->craft_count[0];
   uint8_t *fuel_count = &player->craft_count[1];
 
+  // Don't process if we're missing material or fuel
   if (*material_count == 0 || *fuel_count == 0) return;
 
   uint16_t *material = &player->craft_items[0];
   uint16_t *fuel = &player->craft_items[1];
 
+  // Don't process if we're missing material or fuel
+  if (*material == 0 || *fuel == 0) return;
+
+  // Furnace output is 3rd crafting table slot
   uint8_t *output_count = &player->craft_count[2];
   uint16_t *output_item = &player->craft_items[2];
 
+  // Determine fuel efficiency based on the type of item
+  // Since we can't represent fractions, some items use a random component
+  // to represent the fractional part. In some cases (e.g. sticks), this
+  // can lead to a fuel_value of 0, which means that the fuel gets consumed
+  // without processing any materials.
   uint8_t fuel_value = 0;
   if (*fuel == I_coal) fuel_value = 8;
   else if (*fuel == I_charcoal) fuel_value = 8;
@@ -290,8 +300,7 @@ void getSmeltingOutput (PlayerData *player) {
   else if (*fuel == I_wooden_shovel) fuel_value = 1;
   else if (*fuel == I_wooden_sword) fuel_value = 1;
   else if (*fuel == I_wooden_hoe) fuel_value = 1;
-
-  if (fuel_value == 0) return;
+  else return;
 
   uint8_t exchange = *material_count > fuel_value ? fuel_value : *material_count;
 
