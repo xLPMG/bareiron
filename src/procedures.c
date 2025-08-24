@@ -172,6 +172,8 @@ uint8_t clientSlotToServerSlot (int window_id, uint8_t slot) {
 
 int givePlayerItem (PlayerData *player, uint16_t item, uint8_t count) {
 
+  if (item == 0 || count == 0) return 0;
+
   uint8_t slot = 255;
   uint8_t stack_size = getItemStackSize(item);
 

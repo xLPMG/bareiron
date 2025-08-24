@@ -653,7 +653,7 @@ int cs_closeContainer (int client_fd) {
     player->craft_items[i] = 0;
     player->craft_count[i] = 0;
     uint8_t client_slot = serverSlotToClientSlot(window_id, 41 + i);
-    if (client_slot != 255) sc_setContainerSlot(player->client_fd, 0, client_slot, 0, 0);
+    if (client_slot != 255) sc_setContainerSlot(player->client_fd, window_id, client_slot, 0, 0);
   }
 
   return 0;
