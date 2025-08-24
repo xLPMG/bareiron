@@ -134,6 +134,10 @@ uint16_t readUint16 (int client_fd) {
   recv_count = recv_all(client_fd, recv_buffer, 2, false);
   return ((uint16_t)recv_buffer[0] << 8) | recv_buffer[1];
 }
+int16_t readInt16 (int client_fd) {
+  recv_count = recv_all(client_fd, recv_buffer, 2, false);
+  return ((int16_t)recv_buffer[0] << 8) | (int16_t)recv_buffer[1];
+}
 uint32_t readUint32 (int client_fd) {
   recv_count = recv_all(client_fd, recv_buffer, 4, false);
   return ((uint32_t)recv_buffer[0] << 24) |

@@ -91,8 +91,10 @@ typedef struct {
   uint8_t hotbar;
   uint16_t inventory_items[41];
   uint16_t craft_items[9];
+  uint16_t cursor_item;
   uint8_t inventory_count[41];
   uint8_t craft_count[9];
+  uint8_t cursor_count;
   // 0x01 - attack cooldown
   // 0x02 - has not spawned yet
   // 0x04 - sneaking

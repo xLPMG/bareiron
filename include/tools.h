@@ -26,6 +26,7 @@ ssize_t writeDouble (int client_fd, double num);
 
 uint8_t readByte (int client_fd);
 uint16_t readUint16 (int client_fd);
+int16_t readInt16 (int client_fd);
 uint32_t readUint32 (int client_fd);
 uint64_t readUint64 (int client_fd);
 int64_t readInt64 (int client_fd);

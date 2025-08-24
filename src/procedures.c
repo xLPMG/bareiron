@@ -572,15 +572,26 @@ uint8_t getItemStackSize (uint16_t item) {
 
 void handlePlayerAction (PlayerData *player, int action, short x, short y, short z) {
 
+  // Re-sync slot when player drops an item
+  if (action == 3 || action == 4) {
+    sc_setContainerSlot(
+      player->client_fd, 0,
+      serverSlotToClientSlot(0, player->hotbar),
+      player->inventory_count[player->hotbar],
+      player->inventory_items[player->hotbar]
+    );
+    return;
+  }
+
+  // Ignore further actions not pertaining to mining blocks
+  if (action != 0 && action != 2) return;
+
   // In creative, only the "start mining" action is sent
   // No additional verification is performed, the block is simply removed
   if (action == 0 && GAMEMODE == 1) {
     makeBlockChange(x, y, z, 0);
     return;
   }
-
-  // Ignore actions not pertaining to mining blocks
-  if (action != 0 && action != 2) return;
 
   uint8_t block = getBlockAt(x, y, z);
 

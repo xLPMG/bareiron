@@ -504,14 +504,36 @@ int cs_clickContainer (int client_fd) {
   int window_id = readVarInt(client_fd);
 
   readVarInt(client_fd); // ignore state id
-  readUint16(client_fd); // ignore clicked slot number
-  readByte(client_fd);   // ignore button
-  readVarInt(client_fd); // ignore operation mode
+
+  int16_t clicked_slot = readInt16(client_fd);
+  uint8_t button = readByte(client_fd);
+  uint8_t mode = readVarInt(client_fd);
 
   int changes_count = readVarInt(client_fd);
 
   PlayerData *player;
   if (getPlayerData(client_fd, &player)) return 1;
+
+  uint8_t apply_changes = true;
+  // prevent dropping items
+  if (mode == 4 && clicked_slot != -999) {
+    // when using drop button, re-sync the respective slot
+    uint8_t slot = clientSlotToServerSlot(window_id, clicked_slot);
+    sc_setContainerSlot(client_fd, window_id, clicked_slot, player->inventory_count[slot], player->inventory_items[slot]);
+    apply_changes = false;
+  } else if (mode == 0 && clicked_slot == -999) {
+    // when clicking outside inventory, return the dropped item to the player
+    if (button == 0) {
+      givePlayerItem(player, player->cursor_item, player->cursor_count);
+      player->cursor_item = 0;
+      player->cursor_count = 0;
+    } else {
+      givePlayerItem(player, player->cursor_item, 1);
+      player->cursor_count -= 1;
+      if (player->cursor_count == 0) player->cursor_item = 0;
+    }
+    apply_changes = false;
+  }
 
   uint8_t slot, count, craft = false;
   uint16_t item;
@@ -521,10 +543,10 @@ int cs_clickContainer (int client_fd) {
 
     slot = clientSlotToServerSlot(window_id, readUint16(client_fd));
     // slots outside of the inventory overflow into the crafting buffer
-    if (slot > 40) craft = true;
+    if (slot > 40 && apply_changes) craft = true;
 
     if (!readByte(client_fd)) { // no item?
-      if (slot != 255) {
+      if (slot != 255 && apply_changes) {
         player->inventory_items[slot] = 0;
         player->inventory_count[slot] = 0;
       }
@@ -540,7 +562,7 @@ int cs_clickContainer (int client_fd) {
     tmp = readVarInt(client_fd);
     recv_all(client_fd, recv_buffer, tmp, false);
 
-    if (count > 0) {
+    if (count > 0 && apply_changes) {
       player->inventory_items[slot] = item;
       player->inventory_count[slot] = count;
     }
@@ -558,18 +580,40 @@ int cs_clickContainer (int client_fd) {
     }
   }
 
-  // read but ignore carried item slot (for now)
+  // assign cursor-carried item slot
   if (readByte(client_fd)) {
-    readVarInt(client_fd);
-    readVarInt(client_fd);
+    player->cursor_item = readVarInt(client_fd);
+    player->cursor_count = readVarInt(client_fd);
+    // ignore components
     tmp = readVarInt(client_fd);
     recv_all(client_fd, recv_buffer, tmp, false);
     tmp = readVarInt(client_fd);
     recv_all(client_fd, recv_buffer, tmp, false);
+  } else {
+    player->cursor_item = 0;
+    player->cursor_count = 0;
   }
 
   return 0;
 
+}
+
+// S->C Set Cursor Item
+int sc_setCursorItem (int client_fd, uint16_t item, uint8_t count) {
+
+  writeVarInt(client_fd, 1 + sizeVarInt(count) + (count != 0 ? sizeVarInt(item) + 2 : 0));
+  writeByte(client_fd, 0x59);
+
+  writeVarInt(client_fd, count);
+  if (count == 0) return 0;
+
+  writeVarInt(client_fd, item);
+
+  // Skip components
+  writeByte(client_fd, 0);
+  writeByte(client_fd, 0);
+
+  return 0;
 }
 
 // C->S Set Player Position And Rotation
@@ -655,6 +699,11 @@ int cs_closeContainer (int client_fd) {
     uint8_t client_slot = serverSlotToClientSlot(window_id, 41 + i);
     if (client_slot != 255) sc_setContainerSlot(player->client_fd, window_id, client_slot, 0, 0);
   }
+
+  givePlayerItem(player, player->cursor_item, player->cursor_count);
+  sc_setCursorItem(client_fd, 0, 0);
+  player->cursor_item = 0;
+  player->cursor_count = 0;
 
   return 0;
 }
