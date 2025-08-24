@@ -297,10 +297,10 @@ void handlePacket (int client_fd, int length, int packet_id) {
             // Spawn passive mobs during the day, hostiles during the night
             if (world_time < 13000) {
               uint32_t mob_choice = (r >> 12) & 3;
-              if (mob_choice == 0) spawnMob(25, mob_x, mob_y, mob_z, 20); // Chicken
-              else if (mob_choice == 1) spawnMob(28, mob_x, mob_y, mob_z, 20); // Cow
-              else if (mob_choice == 2) spawnMob(95, mob_x, mob_y, mob_z, 20); // Pig
-              else if (mob_choice == 3) spawnMob(106, mob_x, mob_y, mob_z, 20); // Sheep
+              if (mob_choice == 0) spawnMob(25, mob_x, mob_y, mob_z, 4); // Chicken
+              else if (mob_choice == 1) spawnMob(28, mob_x, mob_y, mob_z, 10); // Cow
+              else if (mob_choice == 2) spawnMob(95, mob_x, mob_y, mob_z, 10); // Pig
+              else if (mob_choice == 3) spawnMob(106, mob_x, mob_y, mob_z, 8); // Sheep
             } else {
               spawnMob(145, mob_x, mob_y, mob_z, 20); // Zombie
             }
