@@ -46,7 +46,8 @@ const blockWhitelist = [
   "oak_slab",
   "stone_slab",
   "cobblestone_slab",
-  "composter"
+  "composter",
+  "coal_block"
 ];
 
 // Currently, only 4 biome types are supported, excluding "beach"
