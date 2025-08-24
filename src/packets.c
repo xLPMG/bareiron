@@ -367,6 +367,17 @@ int sc_chunkDataAndUpdateLight (int client_fd, int _x, int _z) {
   // don't send block light
   writeVarInt(client_fd, 0);
 
+  // Sending block updates changes light prediciton on the client.
+  // Light-emitting blocks are omitted from chunk data so that they can
+  // be overlayed here. This seems to be cheaper than sending actual
+  // block light data.
+  for (int i = 0; i < block_changes_count; i ++) {
+    if (block_changes[i].block != B_torch) continue;
+    if (block_changes[i].x < x || block_changes[i].x >= x + 16) continue;
+    if (block_changes[i].z < z || block_changes[i].z >= z + 16) continue;
+    sc_blockUpdate(client_fd, block_changes[i].x, block_changes[i].y, block_changes[i].z, B_torch);
+  }
+
   return 0;
 
 }
