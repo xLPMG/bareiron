@@ -173,8 +173,10 @@ uint8_t clientSlotToServerSlot (int window_id, uint8_t slot) {
 int givePlayerItem (PlayerData *player, uint16_t item, uint8_t count) {
 
   uint8_t slot = 255;
+  uint8_t stack_size = getItemStackSize(item);
+
   for (int i = 0; i < 41; i ++) {
-    if (player->inventory_items[i] == item && player->inventory_count[i] <= 64 - count) {
+    if (player->inventory_items[i] == item && player->inventory_count[i] <= stack_size - count) {
       slot = i;
       break;
     }
@@ -500,6 +502,49 @@ uint32_t isCompostItem (uint16_t item) {
   ) return 398818392;
 
   return 0;
+}
+
+// Returns the maximum stack size of an item
+uint8_t getItemStackSize (uint16_t item) {
+
+  if (
+    item == I_wooden_pickaxe ||
+    item == I_stone_pickaxe ||
+    item == I_iron_pickaxe ||
+    item == I_golden_pickaxe ||
+    item == I_diamond_pickaxe ||
+    item == I_netherite_pickaxe ||
+    item == I_wooden_axe ||
+    item == I_stone_axe ||
+    item == I_iron_axe ||
+    item == I_golden_axe ||
+    item == I_diamond_axe ||
+    item == I_netherite_axe ||
+    item == I_wooden_shovel ||
+    item == I_stone_shovel ||
+    item == I_iron_shovel ||
+    item == I_golden_shovel ||
+    item == I_diamond_shovel ||
+    item == I_netherite_shovel ||
+    item == I_wooden_sword ||
+    item == I_stone_sword ||
+    item == I_iron_sword ||
+    item == I_golden_sword ||
+    item == I_diamond_sword ||
+    item == I_netherite_sword ||
+    item == I_wooden_hoe ||
+    item == I_stone_hoe ||
+    item == I_iron_hoe ||
+    item == I_golden_hoe ||
+    item == I_diamond_hoe ||
+    item == I_netherite_hoe
+  ) return 1;
+
+  if (
+    item == I_snowball
+  ) return 16;
+
+  return 64;
 }
 
 void handlePlayerAction (PlayerData *player, int action, short x, short y, short z) {
