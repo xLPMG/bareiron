@@ -242,11 +242,11 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
     case 9:
       // Uniform 3x3 shaped recipes
       if (identical) switch (first_item) {
-        case I_iron_ingot: *item = I_iron_block; *count = 1; break;
-        case I_gold_ingot: *item = I_gold_block; *count = 1; break;
-        case I_diamond: *item = I_diamond_block; *count = 1; break;
-        case I_redstone: *item = I_redstone_block; *count = 1; break;
-        case I_coal: *item = I_coal_block; *count = 1; break;
+        case I_iron_ingot: *item = I_iron_block; *count = 1; return;
+        case I_gold_ingot: *item = I_gold_block; *count = 1; return;
+        case I_diamond: *item = I_diamond_block; *count = 1; return;
+        case I_redstone: *item = I_redstone_block; *count = 1; return;
+        case I_coal: *item = I_coal_block; *count = 1; return;
         default: break;
       }
       break;

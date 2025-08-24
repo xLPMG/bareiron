@@ -347,7 +347,12 @@ async function convert () {
         itemsAndBlocks.blockRegistry["redstone_ore"],
         itemsAndBlocks.blockRegistry["iron_ore"],
         itemsAndBlocks.blockRegistry["coal_ore"],
-        itemsAndBlocks.blockRegistry["furnace"]
+        itemsAndBlocks.blockRegistry["furnace"],
+        itemsAndBlocks.blockRegistry["iron_block"],
+        itemsAndBlocks.blockRegistry["gold_block"],
+        itemsAndBlocks.blockRegistry["diamond_block"],
+        itemsAndBlocks.blockRegistry["redstone_block"],
+        itemsAndBlocks.blockRegistry["coal_block"]
       ],
       "mineable/axe": [
         itemsAndBlocks.blockRegistry["oak_log"],
