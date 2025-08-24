@@ -655,7 +655,7 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
     if (target == B_oak_sapling) {
       // Consume the bone meal (yes, even before checks)
       // Wasting bone meal on misplanted saplings is vanilla behavior
-      if ((*count -= 1) == 0) item = 0;
+      if ((*count -= 1) == 0) *item = 0;
       sc_setContainerSlot(player->client_fd, 0, serverSlotToClientSlot(0, player->hotbar), *count, *item);
       if ( // Saplings can only grow when placed on these blocks
         target_below == B_dirt ||
