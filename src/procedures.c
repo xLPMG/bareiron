@@ -340,6 +340,7 @@ uint16_t getMiningResult (uint16_t held_item, uint8_t block) {
   switch (block) {
 
     case B_oak_leaves:
+      if (held_item == I_shears) return I_oak_leaves;
       uint32_t r = fast_rand();
       if (r < 21474836) return I_apple; // 0.5%
       if (r < 85899345) return I_stick; // 2%
@@ -416,7 +417,8 @@ void bumpToolDurability (PlayerData *player) {
     ((held_item == I_iron_pickaxe || held_item == I_iron_axe || held_item == I_iron_shovel) && r < 17179869) ||
     ((held_item == I_golden_pickaxe || held_item == I_golden_axe || held_item == I_golden_shovel) && r < 134217728) ||
     ((held_item == I_diamond_pickaxe || held_item == I_diamond_axe || held_item == I_diamond_shovel) && r < 2751420) ||
-    ((held_item == I_netherite_pickaxe || held_item == I_netherite_axe || held_item == I_netherite_shovel) && r < 2114705)
+    ((held_item == I_netherite_pickaxe || held_item == I_netherite_axe || held_item == I_netherite_shovel) && r < 2114705) ||
+    (held_item == I_shears && r < 18046081)
   ) {
     player->inventory_items[player->hotbar] = 0;
     player->inventory_count[player->hotbar] = 0;
@@ -440,6 +442,9 @@ uint8_t isInstantlyMined (PlayerData *player, uint8_t block) {
     held_item == I_netherite_shovel ||
     held_item == I_golden_shovel
   );
+
+  if (block == B_oak_leaves)
+    return held_item == I_shears;
 
   return (
     block == B_dead_bush ||
@@ -519,36 +524,43 @@ uint32_t isCompostItem (uint16_t item) {
 uint8_t getItemStackSize (uint16_t item) {
 
   if (
+    // Pickaxes
     item == I_wooden_pickaxe ||
     item == I_stone_pickaxe ||
     item == I_iron_pickaxe ||
     item == I_golden_pickaxe ||
     item == I_diamond_pickaxe ||
     item == I_netherite_pickaxe ||
+    // Axes
     item == I_wooden_axe ||
     item == I_stone_axe ||
     item == I_iron_axe ||
     item == I_golden_axe ||
     item == I_diamond_axe ||
     item == I_netherite_axe ||
+    // Shovels
     item == I_wooden_shovel ||
     item == I_stone_shovel ||
     item == I_iron_shovel ||
     item == I_golden_shovel ||
     item == I_diamond_shovel ||
     item == I_netherite_shovel ||
+    // Swords
     item == I_wooden_sword ||
     item == I_stone_sword ||
     item == I_iron_sword ||
     item == I_golden_sword ||
     item == I_diamond_sword ||
     item == I_netherite_sword ||
+    // Hoes
     item == I_wooden_hoe ||
     item == I_stone_hoe ||
     item == I_iron_hoe ||
     item == I_golden_hoe ||
     item == I_diamond_hoe ||
-    item == I_netherite_hoe
+    item == I_netherite_hoe ||
+    // Shears
+    item == I_shears
   ) return 1;
 
   if (

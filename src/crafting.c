@@ -66,6 +66,21 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
             return;
           }
           break;
+        case I_iron_ingot:
+          if (
+            (
+              first_row != 2 && first_col != 2 &&
+              player->craft_items[first + 4] == I_iron_ingot
+            ) || (
+              first_row != 2 && first_col != 0 &&
+              player->craft_items[first + 2] == I_iron_ingot
+            )
+          ) {
+            *item = I_shears;
+            *count = 1;
+            return;
+          }
+          break;
 
         default: break;
       }

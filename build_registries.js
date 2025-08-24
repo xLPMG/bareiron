@@ -370,6 +370,9 @@ async function convert () {
         itemsAndBlocks.blockRegistry["snow_block"],
         itemsAndBlocks.blockRegistry["mud"]
       ],
+      "leaves": [
+        itemsAndBlocks.blockRegistry["oak_leaves"]
+      ]
     },
     "item": {
       "planks": [
