@@ -790,6 +790,15 @@ void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t da
     if (mob_health <= damage) {
       mob->data -= mob_health;
       entity_died = true;
+      // Handle mob drops
+      if (attacker_id < 65536) switch (mob->type) {
+        case 25: givePlayerItem(player, I_chicken, 1); break;
+        case 28: givePlayerItem(player, I_beef, 1 + (fast_rand() % 3)); break;
+        case 95: givePlayerItem(player, I_porkchop, 1 + (fast_rand() % 3)); break;
+        case 106: givePlayerItem(player, I_mutton, 1 + (fast_rand() & 1)); break;
+        case 145: givePlayerItem(player, I_rotten_flesh, (fast_rand() % 3)); break;
+        default: break;
+      }
     } else mob->data -= damage;
   }
 
