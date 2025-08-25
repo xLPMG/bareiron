@@ -216,6 +216,20 @@ void handlePacket (int client_fd, int length, int packet_id) {
         // Don't continue if all we got was rotation data
         if (packet_id == 0x1F) break;
 
+        // Players send movement packets roughly 20 times per second when
+        // moving, and much less frequently when standing still. We can
+        // use this correlation between actions and packet count to cheaply
+        // simulate hunger with a timer-based system, where the timer ticks
+        // down with each position packet. The timer value itself then
+        // naturally works as a substitute for saturation.
+        if (player->saturation == 0) {
+          if (player->hunger > 0) player->hunger--;
+          player->saturation = 200;
+          sc_setHealth(client_fd, player->health, player->hunger);
+        } else if (player->flags & 0x08) {
+          player->saturation -= 1;
+        }
+
         // Cast the values to short to get integer position
         short cx = x, cy = y, cz = z;
         // Determine the player's chunk coordinates
@@ -337,6 +351,10 @@ void handlePacket (int client_fd, int length, int packet_id) {
       }
       break;
 
+    case 0x29:
+      if (state == STATE_PLAY) cs_playerCommand(client_fd);
+      break;
+
     case 0x2A:
       if (state == STATE_PLAY) cs_playerInput(client_fd);
       break;
@@ -351,6 +369,10 @@ void handlePacket (int client_fd, int length, int packet_id) {
 
     case 0x3F:
       if (state == STATE_PLAY) cs_useItemOn(client_fd);
+      break;
+
+    case 0x40:
+      if (state == STATE_PLAY) cs_useItem(client_fd);
       break;
 
     default:

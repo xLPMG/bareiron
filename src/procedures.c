@@ -47,6 +47,7 @@ int getClientIndex (int client_fd) {
 void resetPlayerData (PlayerData *player) {
   player->health = 20;
   player->hunger = 20;
+  player->saturation = 2500;
   player->x = 8;
   player->z = 8;
   player->y = 80;
@@ -571,7 +572,62 @@ uint8_t getItemStackSize (uint16_t item) {
   return 64;
 }
 
-void handlePlayerAction (PlayerData *player, int action, short x, short y, short z) {
+// Handles the player eating their currently held item
+// Returns whether the operation was succesful (item was consumed)
+// If `just_check` is set to true, the item doesn't get consumed
+uint8_t handlePlayerEating (PlayerData *player, uint8_t just_check) {
+
+  // Exit early if player is unable to eat
+  if (player->hunger >= 20) return false;
+
+  uint16_t *held_item = &player->inventory_items[player->hotbar];
+  uint8_t *held_count = &player->inventory_count[player->hotbar];
+
+  // Exit early if player isn't holding anything
+  if (*held_item == 0 || *held_count == 0) return false;
+
+  uint8_t food = 0;
+  uint16_t saturation = 0;
+
+  // The saturation ratio from vanilla to here is about 1:500
+  switch (*held_item) {
+    case I_chicken: food = 2; saturation = 600; break;
+    case I_beef: food = 3; saturation = 900; break;
+    case I_porkchop: food = 3; saturation = 300; break;
+    case I_mutton: food = 2; saturation = 600; break;
+    case I_cooked_chicken: food = 6; saturation = 3600; break;
+    case I_cooked_beef: food = 8; saturation = 6400; break;
+    case I_cooked_porkchop: food = 8; saturation = 6400; break;
+    case I_cooked_mutton: food = 6; saturation = 4800; break;
+    case I_rotten_flesh: food = 4; saturation = 0; break;
+    default: break;
+  }
+
+  // If just checking the item, return before making any changes
+  if (just_check) return food != 0;
+
+  // Apply saturation and food boost
+  player->saturation += saturation;
+  player->hunger += food;
+  if (player->hunger > 20) player->hunger = 20;
+
+  // Consume held item
+  *held_count -= 1;
+  if (*held_count == 0) *held_item = 0;
+
+  // Update the client of these changes
+  sc_setHealth(player->client_fd, player->health, player->hunger);
+  sc_entityEvent(player->client_fd, player->client_fd, 9);
+  sc_setContainerSlot(
+    player->client_fd, 0,
+    serverSlotToClientSlot(0, player->hotbar),
+    *held_count, *held_item
+  );
+
+  return true;
+}
+
+void handlePlayerAction(PlayerData *player, int action, short x, short y, short z) {
 
   // Re-sync slot when player drops an item
   if (action == 3 || action == 4) {
@@ -582,6 +638,13 @@ void handlePlayerAction (PlayerData *player, int action, short x, short y, short
       player->inventory_items[player->hotbar]
     );
     return;
+  }
+
+  // "Finish eating" action, called any time eating stops
+  if (action == 5) {
+    // Reset eating timer and clear eating flag
+    player->flagval_16 = 0;
+    player->flags &= ~0x10;
   }
 
   // Ignore further actions not pertaining to mining blocks
@@ -621,10 +684,42 @@ void handlePlayerAction (PlayerData *player, int action, short x, short y, short
     y_offset ++;
     block_above = getBlockAt(x, y + y_offset, z);
   }
-
 }
 
 void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t face) {
+
+  // If the selected slot doesn't hold any items, exit
+  uint8_t *count = &player->inventory_count[player->hotbar];
+  if (*count == 0) return;
+
+  // Check special item handling
+  uint16_t *item = &player->inventory_items[player->hotbar];
+  if (*item == I_bone_meal) {
+    uint8_t target = getBlockAt(x, y, z);
+    uint8_t target_below = getBlockAt(x, y - 1, z);
+    if (target == B_oak_sapling) {
+      // Consume the bone meal (yes, even before checks)
+      // Wasting bone meal on misplanted saplings is vanilla behavior
+      if ((*count -= 1) == 0) *item = 0;
+      sc_setContainerSlot(player->client_fd, 0, serverSlotToClientSlot(0, player->hotbar), *count, *item);
+      if ( // Saplings can only grow when placed on these blocks
+        target_below == B_dirt ||
+        target_below == B_grass_block ||
+        target_below == B_snowy_grass_block ||
+        target_below == B_mud
+      ) {
+        // Bone meal has a 25% chance of growing a tree from a sapling
+        if ((fast_rand() & 3) == 0) placeTreeStructure(x, y, z);
+      }
+    }
+  } else if (handlePlayerEating(player, true)) {
+    // Reset eating timer and set eating flag
+    player->flagval_16 = 0;
+    player->flags |= 0x10;
+  }
+
+  // Exit if no coordinates were provided
+  if (face == 255) return;
 
   // Check interaction with containers when not sneaking
   if (!(player->flags & 0x04)) {
@@ -651,32 +746,6 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
           givePlayerItem(player, I_bone_meal, 1);
         }
         return;
-      }
-    }
-  }
-
-  // If the selected slot doesn't hold any items, exit
-  uint8_t *count = &player->inventory_count[player->hotbar];
-  if (*count == 0) return;
-
-  // Check special item handling
-  uint16_t *item = &player->inventory_items[player->hotbar];
-  if (*item == I_bone_meal) {
-    uint8_t target = getBlockAt(x, y, z);
-    uint8_t target_below = getBlockAt(x, y - 1, z);
-    if (target == B_oak_sapling) {
-      // Consume the bone meal (yes, even before checks)
-      // Wasting bone meal on misplanted saplings is vanilla behavior
-      if ((*count -= 1) == 0) *item = 0;
-      sc_setContainerSlot(player->client_fd, 0, serverSlotToClientSlot(0, player->hotbar), *count, *item);
-      if ( // Saplings can only grow when placed on these blocks
-        target_below == B_dirt ||
-        target_below == B_grass_block ||
-        target_below == B_snowy_grass_block ||
-        target_below == B_mud
-      ) {
-        // Bone meal has a 25% chance of growing a tree from a sapling
-        if ((fast_rand() & 3) == 0) placeTreeStructure(x, y, z);
       }
     }
   }
@@ -817,16 +886,35 @@ void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t da
 // Takes the time since the last tick in microseconds as the only arguemnt
 void handleServerTick (int64_t time_since_last_tick) {
 
-  // Send Keep Alive and Update Time packets to all in-game clients
+  // Update world time
   world_time = (world_time + time_since_last_tick / 50000) % 24000;
+
+  // Update player events
   for (int i = 0; i < MAX_PLAYERS; i ++) {
     if (player_data[i].client_fd == -1) continue;
+    // Send Keep Alive and Update Time packets
     sc_keepAlive(player_data[i].client_fd);
     sc_updateTime(player_data[i].client_fd, world_time);
-    // Reset attack cooldown if at least a second has passed
-    if (time_since_last_tick >= 1000000) {
-      player_data[i].flags &= ~0x01;
+    // Reset player attack cooldown
+    player_data[i].flags &= ~0x01;
+    // Handle eating animation
+    if (player_data[i].flags & 0x10) {
+      if (player_data[i].flagval_16 >= TICKS_TO_EAT) {
+        handlePlayerEating(&player_data[i], false);
+        player_data[i].flags &= ~0x10;
+        player_data[i].flagval_16 = 0;
+      } else player_data[i].flagval_16 ++;
     }
+    // Heal from saturation
+    if (player_data[i].health >= 20) continue;
+    if (player_data[i].saturation >= 600) {
+      player_data[i].saturation -= 600;
+      player_data[i].health ++;
+    } else if (player_data[i].hunger > 17) {
+      player_data[i].hunger --;
+      player_data[i].health ++;
+    }
+    sc_setHealth(player_data[i].client_fd, player_data[i].health, player_data[i].hunger);
   }
 
   /**

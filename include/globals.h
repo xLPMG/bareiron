@@ -30,6 +30,9 @@
 #define VIEW_DISTANCE 2
 // Time between server ticks in microseconds (default = 1s)
 #define TIME_BETWEEN_TICKS 1000000
+// Calculated from TIME_BETWEEN_TICKS
+#define TICKS_PER_SECOND (1000000 / TIME_BETWEEN_TICKS)
+#define TICKS_TO_EAT (unsigned int)(1.6f * TICKS_PER_SECOND)
 // How many visited chunks to "remember"
 // The server will not re-send chunks that the player has recently been in
 #define VISITED_HISTORY 4
@@ -88,16 +91,23 @@ typedef struct {
   uint8_t grounded_y;
   uint8_t health;
   uint8_t hunger;
+  uint16_t saturation;
   uint8_t hotbar;
   uint16_t inventory_items[41];
   uint16_t craft_items[9];
-  uint16_t cursor_item;
   uint8_t inventory_count[41];
   uint8_t craft_count[9];
-  uint8_t cursor_count;
+  // Usage depends on player's flags, see below
+  // When no flags are set, acts as cursor item ID
+  uint16_t flagval_16;
+  // Usage depends on player's flags, see below
+  // When no flags are set, acts as cursor item count
+  uint8_t flagval_8;
   // 0x01 - attack cooldown
   // 0x02 - has not spawned yet
   // 0x04 - sneaking
+  // 0x08 - sprinting
+  // 0x10 - eating, makes extra8 act as eating timer
   uint8_t flags;
 } PlayerData;
 

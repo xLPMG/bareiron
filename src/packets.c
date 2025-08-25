@@ -477,6 +477,23 @@ int sc_openScreen (int client_fd, uint8_t window, const char *title, uint16_t le
   return 0;
 }
 
+// C->S Use Item
+int cs_useItem (int client_fd) {
+
+  uint8_t hand = readByte(client_fd);
+  int sequence = readVarInt(client_fd);
+
+  // Ignore yaw/pitch
+  recv_all(client_fd, recv_buffer, 8, false);
+
+  PlayerData *player;
+  if (getPlayerData(client_fd, &player)) return 1;
+
+  handlePlayerUseItem(player, 0, 0, 0, 255);
+
+  return 0;
+}
+
 // C->S Use Item On
 int cs_useItemOn (int client_fd) {
 
@@ -535,13 +552,13 @@ int cs_clickContainer (int client_fd) {
   } else if (mode == 0 && clicked_slot == -999) {
     // when clicking outside inventory, return the dropped item to the player
     if (button == 0) {
-      givePlayerItem(player, player->cursor_item, player->cursor_count);
-      player->cursor_item = 0;
-      player->cursor_count = 0;
+      givePlayerItem(player, player->flagval_16, player->flagval_8);
+      player->flagval_16 = 0;
+      player->flagval_8 = 0;
     } else {
-      givePlayerItem(player, player->cursor_item, 1);
-      player->cursor_count -= 1;
-      if (player->cursor_count == 0) player->cursor_item = 0;
+      givePlayerItem(player, player->flagval_16, 1);
+      player->flagval_8 -= 1;
+      if (player->flagval_8 == 0) player->flagval_16 = 0;
     }
     apply_changes = false;
   }
@@ -593,16 +610,16 @@ int cs_clickContainer (int client_fd) {
 
   // assign cursor-carried item slot
   if (readByte(client_fd)) {
-    player->cursor_item = readVarInt(client_fd);
-    player->cursor_count = readVarInt(client_fd);
+    player->flagval_16 = readVarInt(client_fd);
+    player->flagval_8 = readVarInt(client_fd);
     // ignore components
     tmp = readVarInt(client_fd);
     recv_all(client_fd, recv_buffer, tmp, false);
     tmp = readVarInt(client_fd);
     recv_all(client_fd, recv_buffer, tmp, false);
   } else {
-    player->cursor_item = 0;
-    player->cursor_count = 0;
+    player->flagval_16 = 0;
+    player->flagval_8 = 0;
   }
 
   return 0;
@@ -711,10 +728,10 @@ int cs_closeContainer (int client_fd) {
     if (client_slot != 255) sc_setContainerSlot(player->client_fd, window_id, client_slot, 0, 0);
   }
 
-  givePlayerItem(player, player->cursor_item, player->cursor_count);
+  givePlayerItem(player, player->flagval_16, player->flagval_8);
   sc_setCursorItem(client_fd, 0, 0);
-  player->cursor_item = 0;
-  player->cursor_count = 0;
+  player->flagval_16 = 0;
+  player->flagval_8 = 0;
 
   return 0;
 }
@@ -1050,6 +1067,22 @@ int cs_playerInput (int client_fd) {
   // Set or clear sneaking flag
   if (flags & 0x20) player->flags |= 0x04;
   else player->flags &= ~0x04;
+
+  return 0;
+}
+
+int cs_playerCommand (int client_fd) {
+
+  readVarInt(client_fd); // Ignore entity ID
+  uint8_t action = readByte(client_fd);
+  readVarInt(client_fd); // Ignore "Jump Boost" value
+
+  PlayerData *player;
+  if (getPlayerData(client_fd, &player)) return 1;
+
+  // Handle sprinting
+  if (action == 1) player->flags |= 0x08;
+  else if (action == 2) player->flags &= ~0x08;
 
   return 0;
 }
