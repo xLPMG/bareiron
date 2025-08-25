@@ -213,6 +213,7 @@ void spawnPlayer (PlayerData *player) {
   if (player->flags & 0x02) { // Is this a new player?
     // Determine spawning Y coordinate based on terrain height
     spawn_y = getHeightAt(8, 8) + 1;
+    player->y = spawn_y;
     player->flags &= ~0x02;
   } else { // Not a new player
     // Calculate spawn position from player data
