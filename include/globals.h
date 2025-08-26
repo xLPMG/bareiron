@@ -31,8 +31,7 @@
 // Time between server ticks in microseconds (default = 1s)
 #define TIME_BETWEEN_TICKS 1000000
 // Calculated from TIME_BETWEEN_TICKS
-#define TICKS_PER_SECOND (1000000 / TIME_BETWEEN_TICKS)
-#define TICKS_TO_EAT (unsigned int)(1.6f * TICKS_PER_SECOND)
+#define TICKS_PER_SECOND ((float)1000000 / TIME_BETWEEN_TICKS)
 // How many visited chunks to "remember"
 // The server will not re-send chunks that the player has recently been in
 #define VISITED_HISTORY 4
@@ -114,6 +113,8 @@ typedef struct {
 typedef struct {
   uint8_t type;
   short x;
+  // When the mob is dead (health is 0), the Y coordinate acts
+  // as a timer for deleting and deallocating the mob
   uint8_t y;
   short z;
   // Lower 5 bits: health

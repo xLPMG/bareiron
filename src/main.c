@@ -98,6 +98,7 @@ void handlePacket (int client_fd, int length, int packet_id) {
         // For more info on the arguments, see the spawnMob function
         for (int i = 0; i < MAX_MOBS; i ++) {
           if (mob_data[i].type == 0) continue;
+          if ((mob_data[i].data & 31) == 0) continue;
           sc_spawnEntity(
             client_fd, 65536 + i, recv_buffer,
             mob_data[i].type, mob_data[i].x, mob_data[i].y, mob_data[i].z,

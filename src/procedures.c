@@ -842,6 +842,7 @@ void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t da
     else if (held_item == I_netherite_sword) damage *= 8;
     // Enable attack cooldown
     player->flags |= 0x01;
+    player->flagval_8 = 0;
   }
 
   // Whether this attack caused the target entity to die
@@ -859,6 +860,7 @@ void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t da
     uint8_t mob_health = mob->data & 31;
     if (mob_health <= damage) {
       mob->data -= mob_health;
+      mob->y = 0;
       entity_died = true;
       // Handle mob drops
       if (attacker_id < 65536) switch (mob->type) {
@@ -896,10 +898,15 @@ void handleServerTick (int64_t time_since_last_tick) {
     sc_keepAlive(player_data[i].client_fd);
     sc_updateTime(player_data[i].client_fd, world_time);
     // Reset player attack cooldown
-    player_data[i].flags &= ~0x01;
+    if (player_data[i].flags & 0x01) {
+      if (player_data[i].flagval_8 > (unsigned int)(0.6f * TICKS_PER_SECOND)) {
+        player_data[i].flags &= ~0x01;
+        player_data[i].flagval_8 = 0;
+      } else player_data[i].flagval_8 ++;
+    }
     // Handle eating animation
     if (player_data[i].flags & 0x10) {
-      if (player_data[i].flagval_16 >= TICKS_TO_EAT) {
+      if (player_data[i].flagval_16 >= (unsigned int)(1.6f * TICKS_PER_SECOND)) {
         handlePlayerEating(&player_data[i], false);
         player_data[i].flags &= ~0x10;
         player_data[i].flagval_16 = 0;
@@ -930,8 +937,12 @@ void handleServerTick (int64_t time_since_last_tick) {
   for (int i = 0; i < MAX_MOBS; i ++) {
     if (mob_data[i].type == 0) continue;
 
-    // Mob has died, deallocate it
+    // Handle deallocation on mob death
     if ((mob_data[i].data & 31) == 0) {
+      if (mob_data[i].y < (unsigned int)TICKS_PER_SECOND) {
+        mob_data[i].y ++;
+        continue;
+      }
       mob_data[i].type = 0;
       for (int j = 0; j < MAX_PLAYERS; j ++) {
         if (player_data[j].client_fd == -1) continue;
@@ -952,8 +963,13 @@ void handleServerTick (int64_t time_since_last_tick) {
 
     uint32_t r = fast_rand();
 
-    // Skip 25% of passive mob ticks randomly
-    if (passive && (r & 3)) continue;
+    if (passive) {
+      // Update passive mobs once per 4 seconds on average
+      if (r % (4 * (unsigned int)TICKS_PER_SECOND)) continue;
+    } else {
+      // Update hostile mobs once per second on average
+      if (r % (unsigned int)TICKS_PER_SECOND) continue;
+    }
 
     // Find the player closest to this mob
     PlayerData* closest_player;
