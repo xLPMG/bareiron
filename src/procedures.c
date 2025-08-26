@@ -488,10 +488,17 @@ uint8_t isPassableBlock (uint8_t block) {
 uint8_t isReplaceableBlock (uint8_t block) {
   return (
     block == B_air ||
-    block == B_water ||
+    (block >= B_water && block < B_water + 8) ||
     block == B_short_grass ||
     block == B_snow
   );
+}
+
+uint8_t isReplaceableFluid (uint8_t block, uint8_t level, uint8_t fluid) {
+  if (block >= fluid && block - fluid < 8) {
+    return block - fluid > level;
+  }
+  return isReplaceableBlock(block);
 }
 
 // Checks whether the given item can be used in a composter
@@ -627,7 +634,84 @@ uint8_t handlePlayerEating (PlayerData *player, uint8_t just_check) {
   return true;
 }
 
-void handlePlayerAction(PlayerData *player, int action, short x, short y, short z) {
+void handleFluidMovement (short x, uint8_t y, short z, uint8_t fluid, uint8_t block) {
+
+  // Get fluid level (0-7)
+  // The terminology here is a bit different from vanilla:
+  // a higher fluid "level" means the fluid has traveled farther
+  uint8_t level = block - fluid;
+
+  // Query blocks adjacent to this water stream
+  uint8_t adjacent[4] = {
+    getBlockAt(x + 1, y, z),
+    getBlockAt(x - 1, y, z),
+    getBlockAt(x, y, z + 1),
+    getBlockAt(x, y, z - 1)
+  };
+
+  // Handle maintaining connections to a water source
+  if (level != 0) {
+    // Check if this fluid is connected to a block exactly one level lower
+    uint8_t connected = false;
+    for (int i = 0; i < 4; i ++) {
+      if (adjacent[i] == block - 1) {
+        connected = true;
+        break;
+      }
+    }
+    // If not connected, clear this block and recalculate surrounding flow
+    if (!connected) {
+      makeBlockChange(x, y, z, B_air);
+      checkFluidUpdate(x + 1, y, z, adjacent[0]);
+      checkFluidUpdate(x - 1, y, z, adjacent[1]);
+      checkFluidUpdate(x, y, z + 1, adjacent[2]);
+      checkFluidUpdate(x, y, z - 1, adjacent[3]);
+      return;
+    }
+  }
+
+  // Check if water should flow down, prioritize that over lateral flow
+  uint8_t block_below = getBlockAt(x, y - 1, z);
+  if (isReplaceableBlock(block_below)) {
+    makeBlockChange(x, y - 1, z, fluid);
+    return handleFluidMovement(x, y - 1, z, fluid, fluid);
+  }
+
+  // Stop flowing laterally at the maximum level
+  if (level == 7) return;
+
+  // Handle lateral water flow, increasing level by 1
+  if (isReplaceableFluid(adjacent[0], level, fluid)) {
+    makeBlockChange(x + 1, y, z, block + 1);
+    handleFluidMovement(x + 1, y, z, fluid, block + 1);
+  }
+  if (isReplaceableFluid(adjacent[1], level, fluid)) {
+    makeBlockChange(x - 1, y, z, block + 1);
+    handleFluidMovement(x - 1, y, z, fluid, block + 1);
+  }
+  if (isReplaceableFluid(adjacent[2], level, fluid)) {
+    makeBlockChange(x, y, z + 1, block + 1);
+    handleFluidMovement(x, y, z + 1, fluid, block + 1);
+  }
+  if (isReplaceableFluid(adjacent[3], level, fluid)) {
+    makeBlockChange(x, y, z - 1, block + 1);
+    handleFluidMovement(x, y, z - 1, fluid, block + 1);
+  }
+
+}
+
+void checkFluidUpdate (short x, uint8_t y, short z, uint8_t block) {
+
+  uint8_t fluid;
+  if (block >= B_water && block < B_water + 8) fluid = B_water;
+  else if (block >= B_lava && block < B_lava + 8) fluid = B_lava;
+  else return;
+
+  handleFluidMovement(x, y, z, fluid, block);
+
+}
+
+void handlePlayerAction (PlayerData *player, int action, short x, short y, short z) {
 
   // Re-sync slot when player drops an item
   if (action == 3 || action == 4) {
@@ -669,11 +753,17 @@ void handlePlayerAction(PlayerData *player, int action, short x, short y, short 
   if (item) givePlayerItem(player, item, 1);
   bumpToolDurability(player);
 
-  // Check if any blocks above this should break
-  uint8_t y_offset = 1;
-  uint8_t block_above = getBlockAt(x, y + y_offset, z);
+  // Update nearby fluids
+  uint8_t block_above = getBlockAt(x, y + 1, z);
+  checkFluidUpdate(x, y + 1, z, block_above);
+  checkFluidUpdate(x - 1, y, z, getBlockAt(x - 1, y, z));
+  checkFluidUpdate(x + 1, y, z, getBlockAt(x + 1, y, z));
+  checkFluidUpdate(x, y, z - 1, getBlockAt(x, y, z - 1));
+  checkFluidUpdate(x, y, z + 1, getBlockAt(x, y, z + 1));
 
-  // Iterate upward over all blocks in the column
+  // Check if any blocks above this should break, and if so,
+  // iterate upward over all blocks in the column and break them
+  uint8_t y_offset = 1;
   while (isColumnBlock(block_above)) {
     // Destroy the next block
     makeBlockChange(x, y + y_offset, z, 0);
@@ -781,6 +871,12 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
     if (*count == 0) *item = 0;
     // Apply server-side block change
     makeBlockChange(x, y, z, block);
+    // Calculate fluid flow
+    checkFluidUpdate(x, y + 1, z, getBlockAt(x, y + 1, z));
+    checkFluidUpdate(x - 1, y, z, getBlockAt(x - 1, y, z));
+    checkFluidUpdate(x + 1, y, z, getBlockAt(x + 1, y, z));
+    checkFluidUpdate(x, y, z - 1, getBlockAt(x, y, z - 1));
+    checkFluidUpdate(x, y, z + 1, getBlockAt(x, y, z + 1));
   }
 
   // Sync hotbar contents to player

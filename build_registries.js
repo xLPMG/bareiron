@@ -39,6 +39,13 @@ const blockBlacklist = [
 const blockWhitelist = [
   "air",
   "water",
+  "water_1",
+  "water_2",
+  "water_3",
+  "water_4",
+  "water_5",
+  "water_6",
+  "water_7",
   "lava",
   "snowy_grass_block",
   "mud",
@@ -104,6 +111,12 @@ async function extractItemsAndBlocks () {
     if ("properties" in defaultState && "snowy" in defaultState.properties) {
       const snowyState = entry[1].states.find(c => c.properties.snowy);
       blocks["snowy_" + entry[0].replace("minecraft:", "")] = snowyState.id;
+    }
+    // Include levels for fluids
+    if ("fluid" in entry[1].definition) {
+      for (let i = 1; i <= 7; i ++) {
+        blocks[entry[0].replace("minecraft:", "") + "_" + i] = defaultState.id + i;
+      }
     }
   }
 
@@ -332,7 +345,8 @@ async function convert () {
 
   const tagBuffer = serializeTags({
     "fluid": {
-      "water": [ 2 ] // source water block
+      // Water and lava, both flowing and still states
+      "water": [ 1, 2, 3, 4 ]
     },
     "block": {
       "mineable/pickaxe": [
