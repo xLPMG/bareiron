@@ -39,6 +39,8 @@
 // broadcast based on the amount of players, reducing overhead for higher
 // player counts. For very many players, makes movement look jittery.
 #define SCALE_MOVEMENT_UPDATES_TO_PLAYER_COUNT
+// If defined, calculates fluid flow when blocks are updated near fluids
+#define DO_FLUID_FLOW
 
 // If defined, logs unrecognized packet IDs
 // #define DEV_LOG_UNKNOWN_PACKETS

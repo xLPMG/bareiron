@@ -768,11 +768,13 @@ void handlePlayerAction (PlayerData *player, int action, short x, short y, short
 
   // Update nearby fluids
   uint8_t block_above = getBlockAt(x, y + 1, z);
-  checkFluidUpdate(x, y + 1, z, block_above);
-  checkFluidUpdate(x - 1, y, z, getBlockAt(x - 1, y, z));
-  checkFluidUpdate(x + 1, y, z, getBlockAt(x + 1, y, z));
-  checkFluidUpdate(x, y, z - 1, getBlockAt(x, y, z - 1));
-  checkFluidUpdate(x, y, z + 1, getBlockAt(x, y, z + 1));
+  #ifdef DO_FLUID_FLOW
+    checkFluidUpdate(x, y + 1, z, block_above);
+    checkFluidUpdate(x - 1, y, z, getBlockAt(x - 1, y, z));
+    checkFluidUpdate(x + 1, y, z, getBlockAt(x + 1, y, z));
+    checkFluidUpdate(x, y, z - 1, getBlockAt(x, y, z - 1));
+    checkFluidUpdate(x, y, z + 1, getBlockAt(x, y, z + 1));
+  #endif
 
   // Check if any blocks above this should break, and if so,
   // iterate upward over all blocks in the column and break them
@@ -885,11 +887,13 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
     // Apply server-side block change
     makeBlockChange(x, y, z, block);
     // Calculate fluid flow
-    checkFluidUpdate(x, y + 1, z, getBlockAt(x, y + 1, z));
-    checkFluidUpdate(x - 1, y, z, getBlockAt(x - 1, y, z));
-    checkFluidUpdate(x + 1, y, z, getBlockAt(x + 1, y, z));
-    checkFluidUpdate(x, y, z - 1, getBlockAt(x, y, z - 1));
-    checkFluidUpdate(x, y, z + 1, getBlockAt(x, y, z + 1));
+    #ifdef DO_FLUID_FLOW
+      checkFluidUpdate(x, y + 1, z, getBlockAt(x, y + 1, z));
+      checkFluidUpdate(x - 1, y, z, getBlockAt(x - 1, y, z));
+      checkFluidUpdate(x + 1, y, z, getBlockAt(x + 1, y, z));
+      checkFluidUpdate(x, y, z - 1, getBlockAt(x, y, z - 1));
+      checkFluidUpdate(x, y, z + 1, getBlockAt(x, y, z + 1));
+    #endif
   }
 
   // Sync hotbar contents to player
