@@ -436,6 +436,7 @@ void bumpToolDurability (PlayerData *player) {
   ) {
     player->inventory_items[player->hotbar] = 0;
     player->inventory_count[player->hotbar] = 0;
+    sc_entityEvent(player->client_fd, player->client_fd, 47);
     sc_setContainerSlot(player->client_fd, 0, serverSlotToClientSlot(0, player->hotbar), 0, 0);
   }
 
