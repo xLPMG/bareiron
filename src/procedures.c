@@ -778,14 +778,43 @@ void handlePlayerAction (PlayerData *player, int action, short x, short y, short
 
 void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t face) {
 
-  // If the selected slot doesn't hold any items, exit
+  // Get targeted block (if coordinates are provided)
+  uint8_t target = face == 255 ? 0 : getBlockAt(x, y, z);
+  // Get held item properties
   uint8_t *count = &player->inventory_count[player->hotbar];
+  uint16_t *item = &player->inventory_items[player->hotbar];
+
+  // Check interaction with containers when not sneaking
+  if (!(player->flags & 0x04) && face != 255) {
+    if (target == B_crafting_table) {
+      sc_openScreen(player->client_fd, 12, "Crafting", 8);
+      return;
+    } else if (target == B_furnace) {
+      sc_openScreen(player->client_fd, 14, "Furnace", 7);
+      return;
+    } else if (target == B_composter) {
+      // Check if the player is holding anything
+      if (*count == 0) return;
+      // Check if the item is a valid compost item
+      uint32_t compost_chance = isCompostItem(*item);
+      if (compost_chance != 0) {
+        // Take away composted item
+        if ((*count -= 1) == 0) *item = 0;
+        sc_setContainerSlot(player->client_fd, 0, serverSlotToClientSlot(0, player->hotbar), *count, *item);
+        // Test compost chance and give bone meal on success
+        if (fast_rand() < compost_chance) {
+          givePlayerItem(player, I_bone_meal, 1);
+        }
+        return;
+      }
+    }
+  }
+
+  // If the selected slot doesn't hold any items, exit
   if (*count == 0) return;
 
   // Check special item handling
-  uint16_t *item = &player->inventory_items[player->hotbar];
   if (*item == I_bone_meal) {
-    uint8_t target = getBlockAt(x, y, z);
     uint8_t target_below = getBlockAt(x, y - 1, z);
     if (target == B_oak_sapling) {
       // Consume the bone meal (yes, even before checks)
@@ -808,37 +837,8 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
     player->flags |= 0x10;
   }
 
-  // Exit if no coordinates were provided
+  // Don't proceed with block placement if no coordinates were provided
   if (face == 255) return;
-
-  // Check interaction with containers when not sneaking
-  if (!(player->flags & 0x04)) {
-    uint8_t target = getBlockAt(x, y, z);
-    if (target == B_crafting_table) {
-      sc_openScreen(player->client_fd, 12, "Crafting", 8);
-      return;
-    } else if (target == B_furnace) {
-      sc_openScreen(player->client_fd, 14, "Furnace", 7);
-      return;
-    } else if (target == B_composter) {
-      // Check if the player is holding anything
-      uint8_t *count = &player->inventory_count[player->hotbar];
-      if (*count == 0) return;
-      // Check if the item is a valid compost item
-      uint16_t item = player->inventory_items[player->hotbar];
-      uint32_t compost_chance = isCompostItem(item);
-      if (compost_chance != 0) {
-        // Take away composted item
-        if ((*count -= 1) == 0) item = 0;
-        sc_setContainerSlot(player->client_fd, 0, serverSlotToClientSlot(0, player->hotbar), *count, item);
-        // Test compost chance and give bone meal on success
-        if (fast_rand() < compost_chance) {
-          givePlayerItem(player, I_bone_meal, 1);
-        }
-        return;
-      }
-    }
-  }
 
   // If the selected item doesn't correspond to a block, exit
   uint8_t block = I_to_B(*item);
