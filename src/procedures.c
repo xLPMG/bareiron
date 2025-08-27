@@ -68,6 +68,7 @@ int reservePlayerData (int client_fd, uint8_t *uuid, char *name) {
   for (int i = 0; i < MAX_PLAYERS; i ++) {
     if (memcmp(player_data[i].uuid, uuid, 16) == 0) {
       player_data[i].client_fd = client_fd;
+      player_data[i].flags |= 0x20;
       memcpy(player_data[i].name, name, 16);
       return 0;
     }
@@ -81,6 +82,7 @@ int reservePlayerData (int client_fd, uint8_t *uuid, char *name) {
     if (empty) {
       if (player_data_count >= MAX_PLAYERS) return 1;
       player_data[i].client_fd = client_fd;
+      player_data[i].flags |= 0x20;
       memcpy(player_data[i].uuid, uuid, 16);
       memcpy(player_data[i].name, name, 16);
       resetPlayerData(&player_data[i]);
@@ -253,7 +255,7 @@ void spawnPlayer (PlayerData *player) {
   sc_updateTime(player->client_fd, world_time);
 
   // Give the player flight (for testing)
-  sc_playerAbilities(player->client_fd, 0x04);
+  // sc_playerAbilities(player->client_fd, 0x04);
 
   // Calculate player's chunk coordinates
   short _x = div_floor(player->x, 16), _z = div_floor(player->z, 16);
@@ -276,6 +278,9 @@ void spawnPlayer (PlayerData *player) {
   // Re-teleport player after all chunks have been sent
   sc_synchronizePlayerPosition(player->client_fd, spawn_x, spawn_y, spawn_z, spawn_yaw, spawn_pitch);
 
+  // Flag player as fully loaded
+  player->flags &= ~0x20;
+
   task_yield(); // Check task timer between packets
 
 }
@@ -297,6 +302,7 @@ void makeBlockChange (short x, uint8_t y, short z, uint8_t block) {
   // Transmit block update to all in-game clients
   for (int i = 0; i < MAX_PLAYERS; i ++) {
     if (player_data[i].client_fd == -1) continue;
+    if (player_data[i].flags & 0x20) continue;
     if (getClientState(player_data[i].client_fd) != STATE_PLAY) continue;
     sc_blockUpdate(player_data[i].client_fd, x, y, z, block);
   }

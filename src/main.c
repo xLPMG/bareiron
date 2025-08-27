@@ -103,6 +103,7 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
         // information about the joining player to all existing players.
         for (int i = 0; i < MAX_PLAYERS; i ++) {
           if (player_data[i].client_fd == -1) continue;
+          if (player_data[i].flags & 0x20) continue;
           sc_playerInfoUpdateAddPlayer(client_fd, player_data[i]);
           sc_systemChat(player_data[i].client_fd, join_message, 16 + player_name_len);
           if (player_data[i].client_fd == client_fd) continue;
@@ -221,6 +222,7 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
           // Send current position data to all connected players
           for (int i = 0; i < MAX_PLAYERS; i ++) {
             if (player_data[i].client_fd == -1) continue;
+            if (player_data[i].flags & 0x20) continue;
             if (player_data[i].client_fd == client_fd) continue;
             if (packet_id == 0x1F) {
               sc_updateEntityRotation(player_data[i].client_fd, client_fd, player->yaw, player->pitch);

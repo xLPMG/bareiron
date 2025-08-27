@@ -1010,6 +1010,7 @@ int cs_chat (int client_fd) {
   // Forward message to all connected players
   for (int i = 0; i < MAX_PLAYERS; i ++) {
     if (player_data[i].client_fd == -1) continue;
+    if (player_data[i].flags & 0x20) continue;
     sc_systemChat(player_data[i].client_fd, (char *)recv_buffer, message_len + name_len + 3);
   }
 
