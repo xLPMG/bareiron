@@ -167,7 +167,7 @@ int sc_finishConfiguration (int client_fd) {
 // S->C Login (play)
 int sc_loginPlay (int client_fd) {
 
-  writeVarInt(client_fd, 49 + sizeVarInt(MAX_PLAYERS));
+  writeVarInt(client_fd, 47 + sizeVarInt(MAX_PLAYERS) + sizeVarInt(VIEW_DISTANCE) * 2);
   writeByte(client_fd, 0x2B);
   // entity id
   writeUint32(client_fd, client_fd);
@@ -183,7 +183,7 @@ int sc_loginPlay (int client_fd) {
   // view distance
   writeVarInt(client_fd, VIEW_DISTANCE);
   // sim distance
-  writeVarInt(client_fd, 2);
+  writeVarInt(client_fd, VIEW_DISTANCE);
   // reduced debug info
   writeByte(client_fd, 0);
   // respawn screen
