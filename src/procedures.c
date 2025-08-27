@@ -1019,6 +1019,7 @@ void handleServerTick (int64_t time_since_last_tick) {
   // Update player events
   for (int i = 0; i < MAX_PLAYERS; i ++) {
     if (player_data[i].client_fd == -1) continue;
+    if (player_data[i].flags & 0x20) continue;
     // Send Keep Alive and Update Time packets
     sc_keepAlive(player_data[i].client_fd);
     sc_updateTime(player_data[i].client_fd, world_time);
