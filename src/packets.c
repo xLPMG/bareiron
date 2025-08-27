@@ -170,8 +170,7 @@ int sc_loginPlay (int client_fd) {
   writeVarInt(client_fd, 49 + sizeVarInt(MAX_PLAYERS));
   writeByte(client_fd, 0x2B);
   // entity id
-  uint32_t entity_id = getClientIndex(client_fd);
-  send_all(client_fd, &entity_id, 4);
+  writeUint32(client_fd, client_fd);
   // hardcore
   writeByte(client_fd, false);
   // dimensions
