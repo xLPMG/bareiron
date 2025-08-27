@@ -40,6 +40,26 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
           *item = I_oak_button;
           *count = 1;
           return;
+        case I_iron_block:
+          *item = I_iron_ingot;
+          *count = 9;
+          return;
+        case I_gold_block:
+          *item = I_gold_ingot;
+          *count = 9;
+          return;
+        case I_diamond_block:
+          *item = I_diamond;
+          *count = 9;
+          return;
+        case I_redstone_block:
+          *item = I_redstone;
+          *count = 9;
+          return;
+        case I_coal_block:
+          *item = I_coal;
+          *count = 9;
+          return;
 
         default: break;
       }
