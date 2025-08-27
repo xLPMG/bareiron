@@ -935,15 +935,9 @@ void spawnMob (uint8_t type, short x, uint8_t y, short z, uint8_t health) {
 
 void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t damage) {
 
-  // Retrieve player data if applicable
-  PlayerData *player;
-  if (attacker_id < 65536 && attacker_id != -1) {
-    if (getPlayerData(attacker_id, &player)) return;
-  } else if (entity_id < 65536) {
-    if (getPlayerData(entity_id, &player)) return;
-  }
-
   if (attacker_id < 65536 && attacker_id != -1) { // Attacker is a player
+    PlayerData *player;
+    if (getPlayerData(attacker_id, &player)) return;
     // Check if attack cooldown flag is set
     if (player->flags & 0x01) return;
     // Scale damage based on held item
@@ -963,6 +957,9 @@ void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t da
   uint8_t entity_died = false;
 
   if (entity_id < 65536) { // The attacked entity is a player
+    PlayerData *player;
+    if (getPlayerData(entity_id, &player)) return;
+    // Update health on the server
     if (player->health <= damage) {
       player->health = 0;
       entity_died = true;
@@ -977,13 +974,17 @@ void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t da
       mob->y = 0;
       entity_died = true;
       // Handle mob drops
-      if (attacker_id < 65536) switch (mob->type) {
-        case 25: givePlayerItem(player, I_chicken, 1); break;
-        case 28: givePlayerItem(player, I_beef, 1 + (fast_rand() % 3)); break;
-        case 95: givePlayerItem(player, I_porkchop, 1 + (fast_rand() % 3)); break;
-        case 106: givePlayerItem(player, I_mutton, 1 + (fast_rand() & 1)); break;
-        case 145: givePlayerItem(player, I_rotten_flesh, (fast_rand() % 3)); break;
-        default: break;
+      if (attacker_id < 65536 && attacker_id != -1) {
+        PlayerData *player;
+        if (getPlayerData(attacker_id, &player)) return;
+        switch (mob->type) {
+          case 25: givePlayerItem(player, I_chicken, 1); break;
+          case 28: givePlayerItem(player, I_beef, 1 + (fast_rand() % 3)); break;
+          case 95: givePlayerItem(player, I_porkchop, 1 + (fast_rand() % 3)); break;
+          case 106: givePlayerItem(player, I_mutton, 1 + (fast_rand() & 1)); break;
+          case 145: givePlayerItem(player, I_rotten_flesh, (fast_rand() % 3)); break;
+          default: break;
+        }
       }
     } else mob->data -= damage;
   }
