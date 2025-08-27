@@ -902,14 +902,14 @@ int sc_damageEvent (int client_fd, int entity_id, int type) {
 }
 
 // S->C Set Health
-int sc_setHealth (int client_fd, uint8_t health, uint8_t food) {
+int sc_setHealth (int client_fd, uint8_t health, uint8_t food, uint16_t saturation) {
 
   writeVarInt(client_fd, 9 + sizeVarInt(food));
   writeByte(client_fd, 0x61);
 
   writeFloat(client_fd, (float)health);
   writeVarInt(client_fd, food);
-  writeFloat(client_fd, 5.0f); // saturation
+  writeFloat(client_fd, (float)(saturation - 200) / 500.0f);
 
   return 0;
 }

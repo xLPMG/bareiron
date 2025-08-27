@@ -243,7 +243,7 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
         if (player->saturation == 0) {
           if (player->hunger > 0) player->hunger--;
           player->saturation = 200;
-          sc_setHealth(client_fd, player->health, player->hunger);
+          sc_setHealth(client_fd, player->health, player->hunger, player->saturation);
         } else if (player->flags & 0x08) {
           player->saturation -= 1;
         }

@@ -248,7 +248,7 @@ void spawnPlayer (PlayerData *player) {
   }
   sc_setHeldItem(player->client_fd, player->hotbar);
   // Sync client health and hunger
-  sc_setHealth(player->client_fd, player->health, player->hunger);
+  sc_setHealth(player->client_fd, player->health, player->hunger, player->saturation);
   // Sync client clock time
   sc_updateTime(player->client_fd, world_time);
 
@@ -479,7 +479,8 @@ uint8_t isColumnBlock (uint8_t block) {
     block == B_short_grass ||
     block == B_dead_bush ||
     block == B_sand ||
-    block == B_torch
+    block == B_torch ||
+    block == B_oak_sapling
   );
 }
 
@@ -635,7 +636,7 @@ uint8_t handlePlayerEating (PlayerData *player, uint8_t just_check) {
   if (*held_count == 0) *held_item = 0;
 
   // Update the client of these changes
-  sc_setHealth(player->client_fd, player->health, player->hunger);
+  sc_setHealth(player->client_fd, player->health, player->hunger, player->saturation);
   sc_entityEvent(player->client_fd, player->client_fd, 9);
   sc_setContainerSlot(
     player->client_fd, 0,
@@ -962,7 +963,7 @@ void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t da
       entity_died = true;
     } else player->health -= damage;
     // Update health on the client
-    sc_setHealth(entity_id, player->health, player->hunger);
+    sc_setHealth(entity_id, player->health, player->hunger, player->saturation);
   } else { // The attacked entity is a mob
     MobData *mob = &mob_data[entity_id - 65536];
     uint8_t mob_health = mob->data & 31;
@@ -1020,16 +1021,17 @@ void handleServerTick (int64_t time_since_last_tick) {
         player_data[i].flagval_16 = 0;
       } else player_data[i].flagval_16 ++;
     }
-    // Heal from saturation
-    if (player_data[i].health >= 20) continue;
+    // Heal from saturation if player is able and has enough food
+    if (player_data[i].health >= 20 || player_data[i].health == 0) continue;
+    if (player_data[i].hunger < 18) continue;
     if (player_data[i].saturation >= 600) {
       player_data[i].saturation -= 600;
       player_data[i].health ++;
-    } else if (player_data[i].hunger > 17) {
+    } else {
       player_data[i].hunger --;
       player_data[i].health ++;
     }
-    sc_setHealth(player_data[i].client_fd, player_data[i].health, player_data[i].hunger);
+    sc_setHealth(player_data[i].client_fd, player_data[i].health, player_data[i].hunger, player_data[i].saturation);
   }
 
   /**
@@ -1072,12 +1074,12 @@ void handleServerTick (int64_t time_since_last_tick) {
     uint32_t r = fast_rand();
 
     if ((unsigned int)TICKS_PER_SECOND >= 1) {
-    if (passive) {
-      // Update passive mobs once per 4 seconds on average
-      if (r % (4 * (unsigned int)TICKS_PER_SECOND)) continue;
-    } else {
-      // Update hostile mobs once per second on average
-      if (r % (unsigned int)TICKS_PER_SECOND) continue;
+      if (passive) {
+        // Update passive mobs once per 4 seconds on average
+        if (r % (4 * (unsigned int)TICKS_PER_SECOND)) continue;
+      } else {
+        // Update hostile mobs once per second on average
+        if (r % (unsigned int)TICKS_PER_SECOND) continue;
       }
     }
 
