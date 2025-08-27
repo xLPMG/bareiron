@@ -20,6 +20,28 @@
 #include "procedures.h"
 #include "packets.h"
 
+// S->C Status Response (server list ping)
+int sc_statusResponse (int client_fd) {
+
+  char header[] = "{"
+    "\"version\":{\"name\":\"1.21.8\",\"protocol\":772},"
+    "\"enforcesSecureChat\":false,"
+    "\"description\":{\"text\":\"";
+  char footer[] = "\"}}";
+
+  uint16_t string_len = sizeof(header) + sizeof(footer) + motd_len - 2;
+
+  writeVarInt(client_fd, 1 + string_len + sizeVarInt(string_len));
+  writeByte(client_fd, 0x00);
+
+  writeVarInt(client_fd, string_len);
+  send_all(client_fd, header, sizeof(header) - 1);
+  send_all(client_fd, motd, motd_len);
+  send_all(client_fd, footer, sizeof(footer) - 1);
+
+  return 0;
+}
+
 // C->S Handshake
 int cs_handshake (int client_fd) {
   printf("Received Handshake:\n");
@@ -1071,6 +1093,7 @@ int cs_playerInput (int client_fd) {
   return 0;
 }
 
+// C->S Player Command
 int cs_playerCommand (int client_fd) {
 
   readVarInt(client_fd); // Ignore entity ID

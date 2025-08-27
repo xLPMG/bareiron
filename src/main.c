@@ -32,9 +32,8 @@
 #include "registries.h"
 #include "procedures.h"
 
-void handlePacket (int client_fd, int length, int packet_id) {
+void handlePacket (int client_fd, int length, int packet_id, int state) {
 
-  int state = getClientState(client_fd);
   uint64_t bytes_received_start = total_bytes_received;
 
   switch (packet_id) {
@@ -42,7 +41,9 @@ void handlePacket (int client_fd, int length, int packet_id) {
     case 0x00:
       if (state == STATE_NONE) {
         if (cs_handshake(client_fd)) break;
-      } else if (state == STATE_LOGIN) {
+      } else if (state == STATE_STATUS) {
+        if (sc_statusResponse(client_fd)) break;
+      } if (state == STATE_LOGIN) {
         uint8_t uuid[16];
         char name[16];
         if (cs_loginStart(client_fd, uuid, name)) break;
@@ -52,6 +53,19 @@ void handlePacket (int client_fd, int length, int packet_id) {
         if (cs_clientInformation(client_fd)) break;
         if (sc_knownPacks(client_fd)) break;
         if (sc_registries(client_fd)) break;
+      }
+      break;
+
+    case 0x01:
+      // Handle status ping
+      if (state == STATE_STATUS) {
+        // No need for a packet handler, just echo back the long verbatim
+        writeByte(client_fd, 9);
+        writeByte(client_fd, 0x01);
+        writeUint64(client_fd, readUint64(client_fd));
+        // Close connection after this
+        recv_count = 0;
+        return;
       }
       break;
 
@@ -526,7 +540,7 @@ int main () {
     int client_fd = clients[client_index];
 
     // Check if at least 2 bytes are available for reading
-    ssize_t recv_count = recv(client_fd, &recv_buffer, 2, MSG_PEEK);
+    recv_count = recv(client_fd, &recv_buffer, 2, MSG_PEEK);
     if (recv_count < 2) {
       if (recv_count == 0 || (recv_count < 0 && errno != EAGAIN && errno != EWOULDBLOCK)) {
         disconnectClient(&clients[client_index], 1);
@@ -546,8 +560,15 @@ int main () {
       disconnectClient(&clients[client_index], 3);
       continue;
     }
+    // Get client connection state
+    int state = getClientState(client_fd);
+    // Disconnect on legacy server list ping
+    if (state == STATE_NONE && length == 254 && packet_id == 122) {
+      disconnectClient(&clients[client_index], 5);
+      continue;
+    }
     // Handle packet data
-    handlePacket(client_fd, length - sizeVarInt(packet_id), packet_id);
+    handlePacket(client_fd, length - sizeVarInt(packet_id), packet_id, state);
     if (recv_count == 0 || (recv_count == -1 && errno != EAGAIN && errno != EWOULDBLOCK)) {
       disconnectClient(&clients[client_index], 4);
       continue;

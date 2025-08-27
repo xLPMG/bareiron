@@ -62,6 +62,9 @@ extern uint32_t rng_seed;
 
 extern uint16_t world_time;
 
+extern char motd[];
+extern uint8_t motd_len;
+
 extern uint16_t client_count;
 
 #pragma pack(push, 1)
