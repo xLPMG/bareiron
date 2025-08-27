@@ -1131,6 +1131,9 @@ void handleServerTick (int64_t time_since_last_tick) {
 
     }
 
+    // Vary the yaw angle to look just a little less robotic
+    yaw += ((r >> 7) & 31) - 16;
+
     // Check if the blocks we're moving into are passable:
     //   if yes, and the block below is solid, keep the same Y level;
     //   if yes, but the block below isn't solid, drop down one block;
