@@ -107,6 +107,10 @@ void clearPlayerFD (int client_fd) {
   for (int i = 0; i < MAX_PLAYERS; i ++) {
     if (player_data[i].client_fd == client_fd) {
       player_data[i].client_fd = -1;
+      for (int j = 0; j < VISITED_HISTORY; j ++) {
+        player_data[i].visited_x[j] = 32767;
+        player_data[i].visited_z[j] = 32767;
+      }
       break;
     }
   }
