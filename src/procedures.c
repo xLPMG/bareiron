@@ -704,7 +704,7 @@ void checkFluidUpdate (short x, uint8_t y, short z, uint8_t block) {
 
   uint8_t fluid;
   if (block >= B_water && block < B_water + 8) fluid = B_water;
-  else if (block >= B_lava && block < B_lava + 8) fluid = B_lava;
+  // else if (block >= B_lava && block < B_lava + 8) fluid = B_lava;
   else return;
 
   handleFluidMovement(x, y, z, fluid, block);
