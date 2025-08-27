@@ -1059,12 +1059,14 @@ void handleServerTick (int64_t time_since_last_tick) {
 
     uint32_t r = fast_rand();
 
+    if ((unsigned int)TICKS_PER_SECOND >= 1) {
     if (passive) {
       // Update passive mobs once per 4 seconds on average
       if (r % (4 * (unsigned int)TICKS_PER_SECOND)) continue;
     } else {
       // Update hostile mobs once per second on average
       if (r % (unsigned int)TICKS_PER_SECOND) continue;
+      }
     }
 
     // Find the player closest to this mob
@@ -1102,8 +1104,6 @@ void handleServerTick (int64_t time_since_last_tick) {
         if ((r >> 1) & 1) { new_z += 1; yaw = 0; }
         else { new_z -= 1; yaw = 128; }
       }
-      // Vary the yaw angle to look just a little less robotic
-      yaw += ((r >> 7) & 31) - 16;
 
     } else { // Hostile mob movement handling
 
