@@ -41,6 +41,8 @@
 #define SCALE_MOVEMENT_UPDATES_TO_PLAYER_COUNT
 // If defined, calculates fluid flow when blocks are updated near fluids
 #define DO_FLUID_FLOW
+// If defined, enables flight for all players
+#define ENABLE_PLAYER_FLIGHT
 
 // If defined, logs unrecognized packet IDs
 // #define DEV_LOG_UNKNOWN_PACKETS

@@ -254,8 +254,12 @@ void spawnPlayer (PlayerData *player) {
   // Sync client clock time
   sc_updateTime(player->client_fd, world_time);
 
-  // Give the player flight (for testing)
-  // sc_playerAbilities(player->client_fd, 0x04);
+  #ifdef ENABLE_PLAYER_FLIGHT
+  if (GAMEMODE != 1 && GAMEMODE != 3) {
+    // Give the player flight (for testing)
+    sc_playerAbilities(player->client_fd, 0x04);
+  }
+  #endif
 
   // Calculate player's chunk coordinates
   short _x = div_floor(player->x, 16), _z = div_floor(player->z, 16);
