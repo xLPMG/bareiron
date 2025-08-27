@@ -47,7 +47,10 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
         uint8_t uuid[16];
         char name[16];
         if (cs_loginStart(client_fd, uuid, name)) break;
-        if (reservePlayerData(client_fd, uuid, name)) break;
+        if (reservePlayerData(client_fd, uuid, name)) {
+          recv_count = 0;
+          return;
+        }
         if (sc_loginSuccess(client_fd, uuid, name)) break;
       } else if (state == STATE_CONFIGURATION) {
         if (cs_clientInformation(client_fd)) break;

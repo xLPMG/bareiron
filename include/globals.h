@@ -131,6 +131,7 @@ extern BlockChange block_changes[20000];
 extern int block_changes_count;
 
 extern PlayerData player_data[MAX_PLAYERS];
+extern int player_data_count;
 
 extern MobData mob_data[MAX_MOBS];
 

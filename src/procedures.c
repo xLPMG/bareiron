@@ -79,10 +79,12 @@ int reservePlayerData (int client_fd, uint8_t *uuid, char *name) {
       }
     }
     if (empty) {
+      if (player_data_count >= MAX_PLAYERS) return 1;
       player_data[i].client_fd = client_fd;
       memcpy(player_data[i].uuid, uuid, 16);
       memcpy(player_data[i].name, name, 16);
       resetPlayerData(&player_data[i]);
+      player_data_count ++;
       return 0;
     }
   }
@@ -105,6 +107,12 @@ void clearPlayerFD (int client_fd) {
   for (int i = 0; i < MAX_PLAYERS; i ++) {
     if (player_data[i].client_fd == client_fd) {
       player_data[i].client_fd = -1;
+      break;
+    }
+  }
+  for (int i = 0; i < MAX_PLAYERS * 2; i += 2) {
+    if (client_states[i] == client_fd) {
+      client_states[i] = -1;
       return;
     }
   }
