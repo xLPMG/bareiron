@@ -32,7 +32,7 @@
 #define TIME_BETWEEN_TICKS 1000000
 // Calculated from TIME_BETWEEN_TICKS
 #define TICKS_PER_SECOND ((float)1000000 / TIME_BETWEEN_TICKS)
-// How many visited chunks to "remember"
+// How many visited chunk coordinates to "remember"
 // The server will not re-send chunks that the player has recently been in
 #define VISITED_HISTORY 4
 // If defined, scales the frequency at which player movement updates are
