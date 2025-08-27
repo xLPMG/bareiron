@@ -25,7 +25,6 @@ int sc_statusResponse (int client_fd) {
 
   char header[] = "{"
     "\"version\":{\"name\":\"1.21.8\",\"protocol\":772},"
-    "\"enforcesSecureChat\":false,"
     "\"description\":{\"text\":\"";
   char footer[] = "\"}}";
 
