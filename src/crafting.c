@@ -325,6 +325,10 @@ void getSmeltingOutput (PlayerData *player) {
   else registerSmeltingRecipe(I_raw_iron, I_iron_ingot);
   else registerSmeltingRecipe(I_raw_gold, I_gold_ingot);
   else registerSmeltingRecipe(I_sand, I_glass);
+  else registerSmeltingRecipe(I_chicken, I_cooked_chicken);
+  else registerSmeltingRecipe(I_beef, I_cooked_beef);
+  else registerSmeltingRecipe(I_porkchop, I_cooked_porkchop);
+  else registerSmeltingRecipe(I_mutton, I_cooked_mutton);
   else return;
 
   *output_count += exchange;
