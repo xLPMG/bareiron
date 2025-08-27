@@ -1088,6 +1088,11 @@ void handleServerTick (int64_t time_since_last_tick) {
       mob_data[i].type == 106 // Sheep
     );
 
+    // Burn hostile mobs if above ground during sunlight
+    if (!passive && (world_time < 13000 || world_time > 23460) && mob_data[i].y > 48) {
+      hurtEntity(65536 + i, -1, D_on_fire, 2);
+    }
+
     uint32_t r = fast_rand();
 
     if ((unsigned int)TICKS_PER_SECOND >= 1) {
