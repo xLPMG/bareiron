@@ -294,15 +294,6 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
         player->visited_x[VISITED_HISTORY - 1] = _x;
         player->visited_z[VISITED_HISTORY - 1] = _z;
 
-        sc_setCenterChunk(client_fd, _x, _z);
-
-        int count = 0;
-        #ifdef DEV_LOG_CHUNK_GENERATION
-          printf("Sending new chunks (%d, %d)\n", _x, _z);
-          clock_t start, end;
-          start = clock();
-        #endif
-
         uint32_t r = fast_rand();
         // One in every 4 new chunks spawns a mob
         if ((r & 3) == 0) {
@@ -341,6 +332,15 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
             }
           }
         }
+
+        int count = 0;
+        #ifdef DEV_LOG_CHUNK_GENERATION
+          printf("Sending new chunks (%d, %d)\n", _x, _z);
+          clock_t start, end;
+          start = clock();
+        #endif
+
+        sc_setCenterChunk(client_fd, _x, _z);
 
         while (dx != 0) {
           sc_chunkDataAndUpdateLight(client_fd, _x + dx * VIEW_DISTANCE, _z);
