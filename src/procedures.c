@@ -243,9 +243,9 @@ void spawnPlayer (PlayerData *player) {
     player->flags &= ~0x02;
   } else { // Not a new player
     // Calculate spawn position from player data
-    spawn_x = player->x > 0 ? (float)player->x + 0.5 : (float)player->x - 0.5;
+    spawn_x = (float)player->x + 0.5;
     spawn_y = player->y;
-    spawn_z = player->z > 0 ? (float)player->z + 0.5 : (float)player->z - 0.5;
+    spawn_z = (float)player->z + 0.5;
     spawn_yaw = player->yaw * 180 / 127;
     spawn_pitch = player->pitch * 90 / 127;
   }

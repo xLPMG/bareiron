@@ -252,6 +252,8 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
 
         // Cast the values to short to get integer position
         short cx = x, cy = y, cz = z;
+        if (x < 0) cx -= 1;
+        if (z < 0) cz -= 1;
         // Determine the player's chunk coordinates
         short _x = (cx < 0 ? cx - 16 : cx) / 16, _z = (cz < 0 ? cz - 16 : cz) / 16;
         // Calculate distance between previous and current chunk coordinates
