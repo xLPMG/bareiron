@@ -380,7 +380,11 @@ uint8_t buildChunkSection (int cx, int cy, int cz) {
   // runs per block, as this is more expensive than terrain generation.
   for (int i = 0; i < block_changes_count; i ++) {
     if (block_changes[i].block == 0xFF) continue;
+    // Skip blocks that behave better when sent using a block update
     if (block_changes[i].block == B_torch) continue;
+    #ifdef ALLOW_CHESTS
+      if (block_changes[i].block == B_chest) continue;
+    #endif
     if ( // Check if block is within this chunk section
       block_changes[i].x >= cx && block_changes[i].x < cx + 16 &&
       block_changes[i].y >= cy && block_changes[i].y < cy + 16 &&

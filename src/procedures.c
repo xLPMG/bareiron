@@ -181,6 +181,17 @@ uint8_t clientSlotToServerSlot (int window_id, uint8_t slot) {
     if (slot >= 3 && slot <= 38) return clientSlotToServerSlot(0, slot + 6);
 
   }
+  #ifdef ALLOW_CHESTS
+  else if (window_id == 2) { // chest
+
+    // overflow chest slots into crafting grid
+    // technically invalid, expected to be handled on a per-case basis
+    if (slot >= 0 && slot <= 26) return 41 + slot;
+    // the rest of the slots are identical, just shifted by 18
+    if (slot >= 27 && slot <= 62) return clientSlotToServerSlot(0, slot - 18);
+
+  }
+  #endif
 
   return 255;
 }
@@ -297,6 +308,10 @@ uint8_t getBlockChange (short x, uint8_t y, short z) {
       block_changes[i].y == y &&
       block_changes[i].z == z
     ) return block_changes[i].block;
+    #ifdef ALLOW_CHESTS
+      // Skip chest contents
+      if (block_changes[i].block == B_chest) i += 14;
+    #endif
   }
   return 0xFF;
 }
@@ -342,6 +357,12 @@ void makeBlockChange (short x, uint8_t y, short z, uint8_t block) {
       block_changes[i].y == y &&
       block_changes[i].z == z
     ) {
+      #ifdef ALLOW_CHESTS
+      // When replacing chests, clear following 14 entries too (item data)
+      if (block_changes[i].block == B_chest) {
+        for (int j = 1; j < 15; j ++) block_changes[i + j].block = 0xFF;
+      }
+      #endif
       if (is_base_block) block_changes[i].block = 0xFF;
       else block_changes[i].block = block;
       return;
@@ -350,6 +371,41 @@ void makeBlockChange (short x, uint8_t y, short z, uint8_t block) {
 
   // Don't create a new entry if it contains the base terrain block
   if (is_base_block) return;
+
+  #ifdef ALLOW_CHESTS
+  if (block == B_chest) {
+    // Chests require 15 entries total, so for maximum space-efficiency,
+    // we have to find a continuous gap that's at least 15 slots wide.
+    // By design, this loop also continues past the current search range,
+    // which naturally appends the chest to the end if a gap isn't found.
+    int last_real_entry = first_gap - 1;
+    for (int i = first_gap; i <= block_changes_count + 15; i ++) {
+      if (block_changes[i].block != 0xFF) {
+        last_real_entry = i;
+        continue;
+      }
+      if (i - last_real_entry != 15) continue;
+      // A wide enough gap has been found, assign the chest
+      block_changes[last_real_entry + 1].x = x;
+      block_changes[last_real_entry + 1].y = y;
+      block_changes[last_real_entry + 1].z = z;
+      block_changes[last_real_entry + 1].block = block;
+      // Zero out the following 14 entries for item data
+      for (int i = 2; i <= 15; i ++) {
+        block_changes[last_real_entry + i].x = 0;
+        block_changes[last_real_entry + i].y = 0;
+        block_changes[last_real_entry + i].z = 0;
+        block_changes[last_real_entry + i].block = 0;
+      }
+      // Extend future search range if necessary
+      if (i >= block_changes_count) {
+        block_changes_count = i + 1;
+      }
+      break;
+    }
+    return;
+  }
+  #endif
 
   // Fall back to storing the change at the first possible gap
   block_changes[first_gap].x = x;
@@ -841,6 +897,37 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
         return;
       }
     }
+    #ifdef ALLOW_CHESTS
+    else if (target == B_chest) {
+      // Get a pointer to the entry following this chest in block_changes
+      uint8_t *storage_ptr;
+      for (int i = 0; i < block_changes_count; i ++) {
+        if (block_changes[i].block != B_chest) continue;
+        if (block_changes[i].x != x || block_changes[i].y != y || block_changes[i].z != z) continue;
+        storage_ptr = (uint8_t *)(&block_changes[i + 1]);
+        break;
+      }
+      // Terrible memory hack!!
+      // Copy the pointer into the player's crafting table item array.
+      // This allows us to save some memory by repurposing a feature that
+      // is mutually exclusive with chests, though it is otherwise a
+      // terrible idea for obvious reasons.
+      memcpy(player->craft_items, &storage_ptr, sizeof(storage_ptr));
+      // Show the player the chest UI
+      sc_openScreen(player->client_fd, 2, "Chest", 5);
+      // Load the slots of the chest from the block_changes array.
+      // This is a similarly dubious memcpy hack, but at least we're not
+      // mixing data types? Kind of?
+      for (int i = 0; i < 27; i ++) {
+        uint16_t item;
+        uint8_t count;
+        memcpy(&item, storage_ptr + i * 3, 2);
+        memcpy(&count, storage_ptr + i * 3 + 2, 1);
+        sc_setContainerSlot(player->client_fd, 2, i, count, item);
+      }
+      return;
+    }
+    #endif
   }
 
   // If the selected slot doesn't hold any items, exit
@@ -1214,3 +1301,20 @@ void handleServerTick (int64_t time_since_last_tick) {
   }
 
 }
+
+#ifdef ALLOW_CHESTS
+// Broadcasts a chest slot update to all clients who have that chest open,
+// except for the client who initiated the update.
+void broadcastChestUpdate (int origin_fd, uint8_t *storage_ptr, uint16_t item, uint8_t count, uint8_t slot) {
+
+  for (int i = 0; i < MAX_PLAYERS; i ++) {
+    if (player_data[i].client_fd == -1) continue;
+    if (player_data[i].flags & 0x20) continue;
+    // Filter for players that have this chest open
+    if (memcmp(player_data[i].craft_items, &storage_ptr, sizeof(storage_ptr)) != 0) continue;
+    // Send slot update packet
+    sc_setContainerSlot(player_data[i].client_fd, 2, slot, count, item);
+  }
+
+}
+#endif

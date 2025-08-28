@@ -374,7 +374,8 @@ async function convert () {
         itemsAndBlocks.blockRegistry["oak_planks"],
         itemsAndBlocks.blockRegistry["oak_wood"],
         itemsAndBlocks.blockRegistry["oak_slab"],
-        itemsAndBlocks.blockRegistry["crafting_table"]
+        itemsAndBlocks.blockRegistry["crafting_table"],
+        itemsAndBlocks.blockRegistry["chest"]
       ],
       "mineable/shovel": [
         itemsAndBlocks.blockRegistry["grass_block"],

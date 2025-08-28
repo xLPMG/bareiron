@@ -261,16 +261,14 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
       break;
 
     case 8:
-      switch (first_item) {
-        case I_cobblestone:
-          if (identical && player->craft_items[first + 4] == 0) {
-            *item = I_furnace;
-            *count = 1;
-            return;
-          }
-          break;
-
-        default: break;
+      if (identical && player->craft_items[first + 4] == 0) {
+        switch (first_item) {
+          case I_cobblestone: *item = I_furnace; *count = 1; return;
+          #ifdef ALLOW_CHESTS
+          case I_oak_planks: *item = I_chest; *count = 1; return;
+          #endif
+          default: break;
+        }
       }
       break;
 

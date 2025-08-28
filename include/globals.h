@@ -41,6 +41,11 @@
 #define SCALE_MOVEMENT_UPDATES_TO_PLAYER_COUNT
 // If defined, calculates fluid flow when blocks are updated near fluids
 #define DO_FLUID_FLOW
+// If defined, allows players to craft and use chests.
+// Chests take up 15 block change slots each, require additional checks,
+// and use some terrible memory hacks to function. On some platforms, this
+// could cause bad performance or even crashes during gameplay.
+#define ALLOW_CHESTS
 // If defined, enables flight for all players
 #define ENABLE_PLAYER_FLIGHT
 

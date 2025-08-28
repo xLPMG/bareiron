@@ -392,10 +392,14 @@ int sc_chunkDataAndUpdateLight (int client_fd, int _x, int _z) {
   // be overlayed here. This seems to be cheaper than sending actual
   // block light data.
   for (int i = 0; i < block_changes_count; i ++) {
-    if (block_changes[i].block != B_torch) continue;
+    #ifdef ALLOW_CHESTS
+      if (block_changes[i].block != B_torch && block_changes[i].block != B_chest) continue;
+    #else
+      if (block_changes[i].block != B_torch) continue;
+    #endif
     if (block_changes[i].x < x || block_changes[i].x >= x + 16) continue;
     if (block_changes[i].z < z || block_changes[i].z >= z + 16) continue;
-    sc_blockUpdate(client_fd, block_changes[i].x, block_changes[i].y, block_changes[i].z, B_torch);
+    sc_blockUpdate(client_fd, block_changes[i].x, block_changes[i].y, block_changes[i].z, block_changes[i].block);
   }
 
   return 0;
@@ -587,16 +591,43 @@ int cs_clickContainer (int client_fd) {
   uint16_t item;
   int tmp;
 
+  uint16_t *p_item;
+  uint8_t *p_count;
+
+  #ifdef ALLOW_CHESTS
+  // See the handlePlayerUseItem function for more info on this hack
+  uint8_t *storage_ptr;
+  memcpy(&storage_ptr, player->craft_items, sizeof(storage_ptr));
+  #endif
+
   for (int i = 0; i < changes_count; i ++) {
 
     slot = clientSlotToServerSlot(window_id, readUint16(client_fd));
     // slots outside of the inventory overflow into the crafting buffer
     if (slot > 40 && apply_changes) craft = true;
 
+    #ifdef ALLOW_CHESTS
+    if (window_id == 2 && slot > 40) {
+      // Get item pointers from the player's storage pointer
+      // See the handlePlayerUseItem function for more info on this hack
+      p_item = (uint16_t *)(storage_ptr + (slot - 41) * 3);
+      p_count = storage_ptr + (slot - 41) * 3 + 2;
+    } else
+    #endif
+    {
+      p_item = &player->inventory_items[slot];
+      p_count = &player->inventory_count[slot];
+    }
+
     if (!readByte(client_fd)) { // no item?
       if (slot != 255 && apply_changes) {
-        player->inventory_items[slot] = 0;
-        player->inventory_count[slot] = 0;
+        *p_item = 0;
+        *p_count = 0;
+        #ifdef ALLOW_CHESTS
+        if (window_id == 2 && slot > 40) {
+          broadcastChestUpdate(client_fd, storage_ptr, 0, 0, slot - 41);
+        }
+        #endif
       }
       continue;
     }
@@ -611,8 +642,13 @@ int cs_clickContainer (int client_fd) {
     recv_all(client_fd, recv_buffer, tmp, false);
 
     if (count > 0 && apply_changes) {
-      player->inventory_items[slot] = item;
-      player->inventory_count[slot] = count;
+      *p_item = item;
+      *p_count = count;
+      #ifdef ALLOW_CHESTS
+      if (window_id == 2 && slot > 40) {
+        broadcastChestUpdate(client_fd, storage_ptr, item, count, slot - 41);
+      }
+      #endif
     }
 
   }
@@ -740,12 +776,15 @@ int cs_closeContainer (int client_fd) {
   if (getPlayerData(client_fd, &player)) return 1;
 
   // return all items in crafting slots to the player
+  // or, in the case of chests, simply clear the storage pointer
   for (uint8_t i = 0; i < 9; i ++) {
-    givePlayerItem(player, player->craft_items[i], player->craft_count[i]);
+    if (window_id != 2) {
+      givePlayerItem(player, player->craft_items[i], player->craft_count[i]);
+      uint8_t client_slot = serverSlotToClientSlot(window_id, 41 + i);
+      if (client_slot != 255) sc_setContainerSlot(player->client_fd, window_id, client_slot, 0, 0);
+    }
     player->craft_items[i] = 0;
     player->craft_count[i] = 0;
-    uint8_t client_slot = serverSlotToClientSlot(window_id, 41 + i);
-    if (client_slot != 255) sc_setContainerSlot(player->client_fd, window_id, client_slot, 0, 0);
   }
 
   givePlayerItem(player, player->flagval_16, player->flagval_8);
