@@ -647,8 +647,8 @@ uint8_t handlePlayerEating (PlayerData *player, uint8_t just_check) {
   if (*held_count == 0) *held_item = 0;
 
   // Update the client of these changes
-  sc_setHealth(player->client_fd, player->health, player->hunger, player->saturation);
   sc_entityEvent(player->client_fd, player->client_fd, 9);
+  sc_setHealth(player->client_fd, player->health, player->hunger, player->saturation);
   sc_setContainerSlot(
     player->client_fd, 0,
     serverSlotToClientSlot(0, player->hotbar),
