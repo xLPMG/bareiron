@@ -8,6 +8,7 @@
 #include "registries.h"
 #include "worldgen.h"
 #include "structures.h"
+#include "serialize.h"
 #include "procedures.h"
 
 int client_states[MAX_PLAYERS * 2];
@@ -365,7 +366,7 @@ void makeBlockChange (short x, uint8_t y, short z, uint8_t block) {
       #endif
       if (is_base_block) block_changes[i].block = 0xFF;
       else block_changes[i].block = block;
-      return;
+      return writeBlockChangesToDisk(i, i);
     }
   }
 
@@ -401,6 +402,8 @@ void makeBlockChange (short x, uint8_t y, short z, uint8_t block) {
       if (i >= block_changes_count) {
         block_changes_count = i + 1;
       }
+      // Write changes to disk (if applicable)
+      writeBlockChangesToDisk(last_real_entry + 1, last_real_entry + 15);
       break;
     }
     return;
@@ -412,6 +415,8 @@ void makeBlockChange (short x, uint8_t y, short z, uint8_t block) {
   block_changes[first_gap].y = y;
   block_changes[first_gap].z = z;
   block_changes[first_gap].block = block;
+  // Write change to disk (if applicable)
+  writeBlockChangesToDisk(first_gap, first_gap);
   // Extend future search range if we've appended to the end
   if (first_gap == block_changes_count) {
     block_changes_count ++;
@@ -1145,6 +1150,9 @@ void handleServerTick (int64_t time_since_last_tick) {
     sc_setHealth(player_data[i].client_fd, player_data[i].health, player_data[i].hunger, player_data[i].saturation);
   }
 
+  // Write player data to file (if applicable)
+  writePlayerDataToDisk();
+
   /**
    * If the RNG seed ever hits 0, it'll never generate anything
    * else. This is because the fast_rand function uses a simple
@@ -1315,6 +1323,8 @@ void broadcastChestUpdate (int origin_fd, uint8_t *storage_ptr, uint16_t item, u
     // Send slot update packet
     sc_setContainerSlot(player_data[i].client_fd, 2, slot, count, item);
   }
+
+  writeChestChangesToDisk(storage_ptr, slot);
 
 }
 #endif

@@ -3,3 +3,4 @@ notchian
 bareiron
 src/registries.c
 include/registries.h
+*.bin

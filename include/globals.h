@@ -35,6 +35,14 @@
 // How many visited chunk coordinates to "remember"
 // The server will not re-send chunks that the player has recently been in
 #define VISITED_HISTORY 4
+// How many player-made block changes to allow
+// Determines the fixed amount of memory allocated to blocks
+#define MAX_BLOCK_CHANGES 20000
+// If defined, writes and reads world data to/from disk (PC only).
+// This is a synchronous operation, and can cause performance issues if
+// frequent random disk access is slow. Data is still stored in and
+// accessed from memory - reading from disk is only done on startup.
+#define SYNC_WORLD_TO_DISK
 // If defined, scales the frequency at which player movement updates are
 // broadcast based on the amount of players, reducing overhead for higher
 // player counts. For very many players, makes movement look jittery.
@@ -137,7 +145,7 @@ typedef struct {
 
 #pragma pack(pop)
 
-extern BlockChange block_changes[20000];
+extern BlockChange block_changes[MAX_BLOCK_CHANGES];
 extern int block_changes_count;
 
 extern PlayerData player_data[MAX_PLAYERS];

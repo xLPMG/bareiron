@@ -31,6 +31,7 @@
 #include "worldgen.h"
 #include "registries.h"
 #include "procedures.h"
+#include "serialize.h"
 
 void handlePacket (int client_fd, int length, int packet_id, int state) {
 
@@ -456,9 +457,11 @@ int main () {
   for (int i = 3; i >= 0; i --) printf("%X", (unsigned int)((rng_seed >> (8 * i)) & 255));
   printf("\n\n");
 
-  for (int i = 0; i < sizeof(block_changes) / sizeof(BlockChange); i ++) {
+  for (int i = 0; i < MAX_BLOCK_CHANGES; i ++) {
     block_changes[i].block = 0xFF;
   }
+
+  if (initSerializer()) exit(EXIT_FAILURE);
 
   int server_fd, opt = 1;
   struct sockaddr_in server_addr, client_addr;
