@@ -325,15 +325,17 @@ void makeBlockChange (short x, uint8_t y, short z, uint8_t block) {
 
   uint8_t is_base_block = block == getTerrainAt(x, y, z, anchor);
 
-  // Look for existing block change entries and replace them
-  // 0xFF indicates a missing/restored entry
+  // In the block_changes array, 0xFF indicates a missing/restored entry.
+  // We track the position of the first such "gap" for when the operation
+  // isn't replacing an existing block change.
+  int first_gap = block_changes_count;
+
+  // Prioritize replacing entries with matching coordinates
+  // This prevents having conflicting entries for one set of coordinates
   for (int i = 0; i < block_changes_count; i ++) {
-    if (block_changes[i].block == 0xFF && !is_base_block) {
-      block_changes[i].x = x;
-      block_changes[i].y = y;
-      block_changes[i].z = z;
-      block_changes[i].block = block;
-      return;
+    if (block_changes[i].block == 0xFF) {
+      if (first_gap == block_changes_count) first_gap = i;
+      continue;
     }
     if (
       block_changes[i].x == x &&
@@ -349,11 +351,15 @@ void makeBlockChange (short x, uint8_t y, short z, uint8_t block) {
   // Don't create a new entry if it contains the base terrain block
   if (is_base_block) return;
 
-  block_changes[block_changes_count].x = x;
-  block_changes[block_changes_count].y = y;
-  block_changes[block_changes_count].z = z;
-  block_changes[block_changes_count].block = block;
-  block_changes_count ++;
+  // Fall back to storing the change at the first possible gap
+  block_changes[first_gap].x = x;
+  block_changes[first_gap].y = y;
+  block_changes[first_gap].z = z;
+  block_changes[first_gap].block = block;
+  // Extend future search range if we've appended to the end
+  if (first_gap == block_changes_count) {
+    block_changes_count ++;
+  }
 
 }
 
