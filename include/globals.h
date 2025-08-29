@@ -65,7 +65,7 @@
 // could cause bad performance or even crashes during gameplay.
 #define ALLOW_CHESTS
 // If defined, enables flight for all players
-#define ENABLE_PLAYER_FLIGHT
+// #define ENABLE_PLAYER_FLIGHT
 
 // If defined, logs unrecognized packet IDs
 // #define DEV_LOG_UNKNOWN_PACKETS
