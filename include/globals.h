@@ -50,6 +50,9 @@
 // only applies to player data. Block changes are written as soon as they
 // are made, but in much smaller portions.
 #define DISK_SYNC_INTERVAL 15000000
+// Time in microseconds to spend waiting for data transmission before
+// timing out. (default = 5s)
+#define NETWORK_TIMEOUT_TIME 5000000
 // If defined, scales the frequency at which player movement updates are
 // broadcast based on the amount of players, reducing overhead for higher
 // player counts. For very many players, makes movement look jittery.
