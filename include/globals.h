@@ -132,11 +132,11 @@ typedef struct {
   // Usage depends on player's flags, see below
   // When no flags are set, acts as cursor item count
   uint8_t flagval_8;
-  // 0x01 - attack cooldown
+  // 0x01 - attack cooldown, uses flagval_8 as the timer
   // 0x02 - has not spawned yet
   // 0x04 - sneaking
   // 0x08 - sprinting
-  // 0x10 - eating, makes extra8 act as eating timer
+  // 0x10 - eating, makes flagval_16 act as eating timer
   // 0x20 - client not fully loaded
   uint8_t flags;
 } PlayerData;
