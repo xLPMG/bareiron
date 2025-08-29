@@ -1096,10 +1096,13 @@ void spawnMob (uint8_t type, short x, uint8_t y, short z, uint8_t health) {
 void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t damage) {
 
   if (attacker_id > 0) { // Attacker is a player
+
     PlayerData *player;
     if (getPlayerData(attacker_id, &player)) return;
+
     // Check if attack cooldown flag is set
     if (player->flags & 0x01) return;
+
     // Scale damage based on held item
     uint16_t held_item = player->inventory_items[player->hotbar];
     if (held_item == I_wooden_sword) damage *= 4;
@@ -1108,31 +1111,75 @@ void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t da
     else if (held_item == I_iron_sword) damage *= 6;
     else if (held_item == I_diamond_sword) damage *= 7;
     else if (held_item == I_netherite_sword) damage *= 8;
+
     // Enable attack cooldown
     player->flags |= 0x01;
     player->flagval_8 = 0;
+
   }
 
   // Whether this attack caused the target entity to die
   uint8_t entity_died = false;
 
   if (entity_id > 0) { // The attacked entity is a player
+
     PlayerData *player;
     if (getPlayerData(entity_id, &player)) return;
-    // Update health on the server
+
+    // Don't continue if the player is already dead
+    if (player->health == 0) return;
+
+    // Process health change on the server
     if (player->health <= damage) {
+
       player->health = 0;
       entity_died = true;
+
+      // Prepare death message in recv_buffer
+      uint8_t player_name_len = strlen(player->name);
+      strcpy((char *)recv_buffer, player->name);
+
+      if (damage_type == D_fall && damage > 8) {
+        // Killed by a greater than 5 block fall
+        strcpy((char *)recv_buffer + player_name_len, " fell from a high place");
+        recv_buffer[player_name_len + 23] = '\0';
+      } else if (damage_type == D_fall) {
+        // Killed by a less than 5 block fall
+        strcpy((char *)recv_buffer + player_name_len, " hit the ground too hard");
+        recv_buffer[player_name_len + 24] = '\0';
+      } else if (attacker_id < -1) {
+        // Killed by a mob
+        strcpy((char *)recv_buffer + player_name_len, " was slain by a mob");
+        recv_buffer[player_name_len + 19] = '\0';
+      } else if (attacker_id > 0) {
+        // Killed by a player
+        PlayerData *attacker;
+        if (getPlayerData(attacker_id, &attacker)) return;
+        strcpy((char *)recv_buffer + player_name_len, " was slain by ");
+        strcpy((char *)recv_buffer + player_name_len + 14, attacker->name);
+        recv_buffer[player_name_len + 14 + strlen(attacker->name)] = '\0';
+      }
+
     } else player->health -= damage;
+
     // Update health on the client
     sc_setHealth(entity_id, player->health, player->hunger, player->saturation);
+
   } else { // The attacked entity is a mob
+
     MobData *mob = &mob_data[-entity_id - 2];
     uint8_t mob_health = mob->data & 31;
+
+    // Don't continue if the mob is already dead
+    if (mob_health == 0) return;
+
+    // Process health change on the server
     if (mob_health <= damage) {
+
       mob->data -= mob_health;
       mob->y = 0;
       entity_died = true;
+
       // Handle mob drops
       if (attacker_id > 0) {
         PlayerData *player;
@@ -1146,7 +1193,9 @@ void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t da
           default: break;
         }
       }
+
     } else mob->data -= damage;
+
   }
 
   // Broadcast damage event to all players
@@ -1154,7 +1203,13 @@ void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t da
     int client_fd = player_data[i].client_fd;
     if (client_fd == -1) continue;
     sc_damageEvent(client_fd, entity_id, damage_type);
-    if (entity_died) sc_entityEvent(client_fd, entity_id, 3);
+    // Below this, handle death events
+    if (!entity_died) continue;
+    sc_entityEvent(client_fd, entity_id, 3);
+    if (entity_id >= 0) {
+      // If a player died, broadcast their death message
+      sc_systemChat(client_fd, (char *)recv_buffer, strlen((char *)recv_buffer));
+    }
   }
 
 }
