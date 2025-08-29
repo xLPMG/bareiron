@@ -1145,8 +1145,15 @@ void handleServerTick (int64_t time_since_last_tick) {
 
   // Update player events
   for (int i = 0; i < MAX_PLAYERS; i ++) {
-    if (player_data[i].client_fd == -1) continue;
-    if (player_data[i].flags & 0x20) continue;
+    if (player_data[i].client_fd == -1) continue; // Skip offline players
+    if (player_data[i].flags & 0x20) { // Check "client loading" flag
+      // If 3 seconds (60 vanilla ticks) have passed, assume player has loaded
+      player_data[i].flagval_16 ++;
+      if (player_data[i].flagval_16 > (unsigned int)(3 * TICKS_PER_SECOND)) {
+        player_data[i].flags &= ~0x20;
+        player_data[i].flagval_16 = 0;
+      } else continue;
+    }
     // Send Keep Alive and Update Time packets
     sc_keepAlive(player_data[i].client_fd);
     sc_updateTime(player_data[i].client_fd, world_time);

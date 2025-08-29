@@ -137,7 +137,7 @@ typedef struct {
   // 0x04 - sneaking
   // 0x08 - sprinting
   // 0x10 - eating, makes flagval_16 act as eating timer
-  // 0x20 - client not fully loaded
+  // 0x20 - client loading, uses flagval_16 as fallback timer
   uint8_t flags;
 } PlayerData;
 
