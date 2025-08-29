@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "globals.h"
@@ -316,13 +317,30 @@ uint8_t getBlockChange (short x, uint8_t y, short z) {
   return 0xFF;
 }
 
-void makeBlockChange (short x, uint8_t y, short z, uint8_t block) {
+// Handle running out of memory for new block changes
+void failBlockChange (short x, uint8_t y, short z, uint8_t block) {
+
+  // Get previous block at this location
+  uint8_t before = getBlockAt(x, y, z);
+
+  // Broadcast a new update to all players
+  for (int i = 0; i < MAX_PLAYERS; i ++) {
+    if (player_data[i].client_fd == -1) continue;
+    if (player_data[i].flags & 0x20) continue;
+    // Reset the block they tried to change
+    sc_blockUpdate(player_data[i].client_fd, x, y, z, before);
+    // Broadcast a chat message warning about the limit
+    sc_systemChat(player_data[i].client_fd, "Block changes limit exceeded. Restore original terrain to continue.", 67);
+  }
+
+}
+
+uint8_t makeBlockChange (short x, uint8_t y, short z, uint8_t block) {
 
   // Transmit block update to all in-game clients
   for (int i = 0; i < MAX_PLAYERS; i ++) {
     if (player_data[i].client_fd == -1) continue;
     if (player_data[i].flags & 0x20) continue;
-    if (getClientState(player_data[i].client_fd) != STATE_PLAY) continue;
     sc_blockUpdate(player_data[i].client_fd, x, y, z, block);
   }
 
@@ -365,12 +383,13 @@ void makeBlockChange (short x, uint8_t y, short z, uint8_t block) {
       #endif
       if (is_base_block) block_changes[i].block = 0xFF;
       else block_changes[i].block = block;
-      return writeBlockChangesToDisk(i, i);
+      writeBlockChangesToDisk(i, i);
+      return 0;
     }
   }
 
   // Don't create a new entry if it contains the base terrain block
-  if (is_base_block) return;
+  if (is_base_block) return 0;
 
   #ifdef ALLOW_CHESTS
   if (block == B_chest) {
@@ -403,11 +422,19 @@ void makeBlockChange (short x, uint8_t y, short z, uint8_t block) {
       }
       // Write changes to disk (if applicable)
       writeBlockChangesToDisk(last_real_entry + 1, last_real_entry + 15);
-      break;
+      return 0;
     }
-    return;
+    // If we're here, no changes were made
+    failBlockChange(x, y, z, block);
+    return 1;
   }
   #endif
+
+  // Handle running out of memory for new block changes
+  if (first_gap == MAX_BLOCK_CHANGES) {
+    failBlockChange(x, y, z, block);
+    return 1;
+  }
 
   // Fall back to storing the change at the first possible gap
   block_changes[first_gap].x = x;
@@ -421,6 +448,7 @@ void makeBlockChange (short x, uint8_t y, short z, uint8_t block) {
     block_changes_count ++;
   }
 
+  return 0;
 }
 
 // Returns the result of mining a block, taking into account the block type and tools
@@ -837,7 +865,8 @@ void handlePlayerAction (PlayerData *player, int action, short x, short y, short
   // If this is a "start mining" packet, the block must be instamine
   if (action == 0 && !isInstantlyMined(player, block)) return;
 
-  makeBlockChange(x, y, z, 0);
+  // Don't continue if the block change failed
+  if (makeBlockChange(x, y, z, 0)) return;
 
   uint16_t held_item = player->inventory_items[player->hotbar];
   uint16_t item = getMiningResult(held_item, block);
@@ -989,12 +1018,12 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
     isReplaceableBlock(getBlockAt(x, y, z)) &&
     (!isColumnBlock(block) || getBlockAt(x, y - 1, z) != B_air)
   ) {
+    // Apply server-side block change
+    if (makeBlockChange(x, y, z, block)) return;
     // Decrease item amount in selected slot
     *count -= 1;
     // Clear item id in slot if amount is zero
     if (*count == 0) *item = 0;
-    // Apply server-side block change
-    makeBlockChange(x, y, z, block);
     // Calculate fluid flow
     #ifdef DO_FLUID_FLOW
       checkFluidUpdate(x, y + 1, z, getBlockAt(x, y + 1, z));
