@@ -294,9 +294,6 @@ void spawnPlayer (PlayerData *player) {
   // Re-teleport player after all chunks have been sent
   sc_synchronizePlayerPosition(player->client_fd, spawn_x, spawn_y, spawn_z, spawn_yaw, spawn_pitch);
 
-  // Flag player as fully loaded
-  player->flags &= ~0x20;
-
   task_yield(); // Check task timer between packets
 
 }
