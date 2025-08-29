@@ -7,7 +7,8 @@
 #include "structures.h"
 
 void setBlockIfReplaceable (short x, uint8_t y, short z, uint8_t block) {
-  if (!isReplaceableBlock(getBlockAt(x, y, z))) return;
+  uint8_t target = getBlockAt(x, y, z);
+  if (!isReplaceableBlock(target) && target != B_oak_leaves) return;
   makeBlockChange(x, y, z, block);
 }
 
