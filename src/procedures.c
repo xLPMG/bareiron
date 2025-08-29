@@ -1152,7 +1152,7 @@ void handleServerTick (int64_t time_since_last_tick) {
     sc_updateTime(player_data[i].client_fd, world_time);
     // Reset player attack cooldown
     if (player_data[i].flags & 0x01) {
-      if (player_data[i].flagval_8 > (unsigned int)(0.6f * TICKS_PER_SECOND)) {
+      if (player_data[i].flagval_8 >= (unsigned int)(0.6f * TICKS_PER_SECOND)) {
         player_data[i].flags &= ~0x01;
         player_data[i].flagval_8 = 0;
       } else player_data[i].flagval_8 ++;
