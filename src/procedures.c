@@ -187,7 +187,7 @@ uint8_t clientSlotToServerSlot (int window_id, uint8_t slot) {
 
     // overflow chest slots into crafting grid
     // technically invalid, expected to be handled on a per-case basis
-    if (slot >= 0 && slot <= 26) return 41 + slot;
+    if (slot <= 26) return 41 + slot;
     // the rest of the slots are identical, just shifted by 18
     if (slot >= 27 && slot <= 62) return clientSlotToServerSlot(0, slot - 18);
 
