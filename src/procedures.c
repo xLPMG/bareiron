@@ -239,7 +239,8 @@ int givePlayerItem (PlayerData *player, uint16_t item, uint8_t count) {
     }
   }
 
-  if (slot == 255) return 1;
+  // Fail to assign item if slot is outside of main inventory
+  if (slot >= 36) return 1;
 
   player->inventory_items[slot] = item;
   player->inventory_count[slot] += count;
