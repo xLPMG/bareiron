@@ -1052,13 +1052,19 @@ void spawnMob (uint8_t type, short x, uint8_t y, short z, uint8_t health) {
     mob_data[i].z = z;
     mob_data[i].data = health & 31;
 
+    // Forge a UUID from a random number and the mob's index
+    uint8_t uuid[16];
+    uint32_t r = fast_rand();
+    memcpy(uuid, &r, 4);
+    memcpy(uuid + 4, &i, 4);
+
     // Broadcast entity creation to all players
     for (int j = 0; j < MAX_PLAYERS; j ++) {
       if (player_data[j].client_fd == -1) continue;
       sc_spawnEntity(
         player_data[j].client_fd,
         65536 + i, // Try to avoid conflict with client file descriptors
-        recv_buffer, // The UUID doesn't matter, feed it garbage
+        uuid, // Use the UUID generated above
         type, (double)x + 0.5f, y, (double)z + 0.5f,
         // Face opposite of the player, as if looking at them when spawning
         (player_data[j].yaw + 127) & 255, 0
