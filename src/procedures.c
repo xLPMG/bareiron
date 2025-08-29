@@ -1060,7 +1060,7 @@ void spawnMob (uint8_t type, short x, uint8_t y, short z, uint8_t health) {
       if (player_data[j].client_fd == -1) continue;
       sc_spawnEntity(
         player_data[j].client_fd,
-        65536 + i, // Try to avoid conflict with client file descriptors
+        -2 - i, // Use negative IDs to avoid conflicts with player IDs
         uuid, // Use the UUID generated above
         type, (double)x + 0.5f, y, (double)z + 0.5f,
         // Face opposite of the player, as if looking at them when spawning
@@ -1075,7 +1075,7 @@ void spawnMob (uint8_t type, short x, uint8_t y, short z, uint8_t health) {
 
 void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t damage) {
 
-  if (attacker_id < 65536 && attacker_id != -1) { // Attacker is a player
+  if (attacker_id > 0) { // Attacker is a player
     PlayerData *player;
     if (getPlayerData(attacker_id, &player)) return;
     // Check if attack cooldown flag is set
@@ -1096,7 +1096,7 @@ void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t da
   // Whether this attack caused the target entity to die
   uint8_t entity_died = false;
 
-  if (entity_id < 65536) { // The attacked entity is a player
+  if (entity_id > 0) { // The attacked entity is a player
     PlayerData *player;
     if (getPlayerData(entity_id, &player)) return;
     // Update health on the server
@@ -1107,14 +1107,14 @@ void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t da
     // Update health on the client
     sc_setHealth(entity_id, player->health, player->hunger, player->saturation);
   } else { // The attacked entity is a mob
-    MobData *mob = &mob_data[entity_id - 65536];
+    MobData *mob = &mob_data[-entity_id - 2];
     uint8_t mob_health = mob->data & 31;
     if (mob_health <= damage) {
       mob->data -= mob_health;
       mob->y = 0;
       entity_died = true;
       // Handle mob drops
-      if (attacker_id < 65536 && attacker_id != -1) {
+      if (attacker_id > 0) {
         PlayerData *player;
         if (getPlayerData(attacker_id, &player)) return;
         switch (mob->type) {
@@ -1214,9 +1214,9 @@ void handleServerTick (int64_t time_since_last_tick) {
       for (int j = 0; j < MAX_PLAYERS; j ++) {
         if (player_data[j].client_fd == -1) continue;
         // Spawn death smoke particles
-        sc_entityEvent(player_data[j].client_fd, 65536 + i, 60);
+        sc_entityEvent(player_data[j].client_fd, -2 - i, 60);
         // Remove the entity from the client
-        sc_removeEntity(player_data[j].client_fd, 65536 + i);
+        sc_removeEntity(player_data[j].client_fd, -2 - i);
       }
       continue;
     }
@@ -1230,7 +1230,7 @@ void handleServerTick (int64_t time_since_last_tick) {
 
     // Burn hostile mobs if above ground during sunlight
     if (!passive && (world_time < 13000 || world_time > 23460) && mob_data[i].y > 48) {
-      hurtEntity(65536 + i, -1, D_on_fire, 2);
+      hurtEntity(-2 - i, -1, D_on_fire, 2);
     }
 
     uint32_t r = fast_rand();
@@ -1247,7 +1247,7 @@ void handleServerTick (int64_t time_since_last_tick) {
 
     // Find the player closest to this mob
     PlayerData* closest_player;
-    uint32_t closest_dist = 65536;
+    uint32_t closest_dist = 2147483647;
     for (int j = 0; j < MAX_PLAYERS; j ++) {
       if (player_data[j].client_fd == -1) continue;
       uint16_t curr_dist = (
@@ -1285,7 +1285,7 @@ void handleServerTick (int64_t time_since_last_tick) {
 
       // If we're already next to the player, hurt them and skip movement
       if (closest_dist < 3 && abs(mob_data[i].y - closest_player->y) < 2) {
-        hurtEntity(closest_player->client_fd, 65536 + i, D_generic, 6);
+        hurtEntity(closest_player->client_fd, -2 - i, D_generic, 6);
         continue;
       }
 
@@ -1335,7 +1335,7 @@ void handleServerTick (int64_t time_since_last_tick) {
     // Broadcast relevant entity movement packets
     for (int j = 0; j < MAX_PLAYERS; j ++) {
       if (player_data[j].client_fd == -1) continue;
-      int entity_id = 65536 + i;
+      int entity_id = -2 - i;
       sc_teleportEntity (
         player_data[j].client_fd, entity_id,
         (double)new_x + 0.5, new_y, (double)new_z + 0.5,
