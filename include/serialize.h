@@ -3,7 +3,7 @@
 
 #include "globals.h"
 
-#if defined(SYNC_WORLD_TO_DISK) && !defined(ESP_PLATFORM)
+#ifdef SYNC_WORLD_TO_DISK
   int initSerializer ();
   void writeBlockChangesToDisk (int from, int to);
   void writeChestChangesToDisk (uint8_t *storage_ptr, uint8_t slot);

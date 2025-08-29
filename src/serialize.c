@@ -1,18 +1,44 @@
 #include "globals.h"
 
-#if defined(SYNC_WORLD_TO_DISK) && !defined(ESP_PLATFORM)
+#ifdef SYNC_WORLD_TO_DISK
 
-#include <stdio.h>
-#include <stdlib.h>
+#ifdef ESP_PLATFORM
+  #include "esp_littlefs.h"
+  #define FILE_PATH "/littlefs/world.bin"
+#else
+  #include <stdio.h>
+  #define FILE_PATH "world.bin"
+#endif
 
+#include "tools.h"
 #include "registries.h"
 #include "serialize.h"
+
+int64_t last_disk_sync_time = 0;
 
 // Restores world data from disk, or writes world file if it doesn't exist
 int initSerializer () {
 
+  last_disk_sync_time = get_program_time();
+
+  #ifdef ESP_PLATFORM
+    esp_vfs_littlefs_conf_t conf = {
+      .base_path = "/littlefs",
+      .partition_label = "littlefs",
+      .format_if_mount_failed = true,
+      .dont_mount = false
+    };
+
+    esp_err_t ret = esp_vfs_littlefs_register(&conf);
+    if (ret != ESP_OK) {
+      printf("LittleFS error %d\n", ret);
+      perror("Failed to mount LittleFS. Aborting.");
+      return 1;
+    }
+  #endif
+
   // Attempt to open existing world file
-  FILE *file = fopen("world.bin", "rb");
+  FILE *file = fopen(FILE_PATH, "rb");
   if (file) {
 
     // Read block changes from the start of the file directly into memory
@@ -44,7 +70,7 @@ int initSerializer () {
     printf("No \"world.bin\" file found, creating one...\n\n");
 
     // Try to create the file in binary write mode
-    file = fopen("world.bin", "wb");
+    file = fopen(FILE_PATH, "wb");
     if (!file) {
       perror(
         "Failed to open \"world.bin\" for writing.\n"
@@ -83,13 +109,14 @@ int initSerializer () {
 
   }
 
+  return 0;
 }
 
 // Writes a range of block change entries to disk
 void writeBlockChangesToDisk (int from, int to) {
 
   // Try to open the file in rw (without overwriting)
-  FILE *file = fopen("world.bin", "r+b");
+  FILE *file = fopen(FILE_PATH, "r+b");
   if (!file) {
     perror("Failed to open \"world.bin\". Block updates have been dropped.");
     return;
@@ -116,8 +143,12 @@ void writeBlockChangesToDisk (int from, int to) {
 // Writes all player data to disk
 void writePlayerDataToDisk () {
 
+  // Skip this write if enough time hasn't passed since the last one
+  if (get_program_time() - last_disk_sync_time < DISK_SYNC_INTERVAL) return;
+  last_disk_sync_time = get_program_time();
+
   // Try to open the file in rw (without overwriting)
-  FILE *file = fopen("world.bin", "r+b");
+  FILE *file = fopen(FILE_PATH, "r+b");
   if (!file) {
     perror("Failed to open \"world.bin\". Player updates have been dropped.");
     return;

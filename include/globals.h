@@ -38,11 +38,18 @@
 // How many player-made block changes to allow
 // Determines the fixed amount of memory allocated to blocks
 #define MAX_BLOCK_CHANGES 20000
-// If defined, writes and reads world data to/from disk (PC only).
+// If defined, writes and reads world data to/from disk (or flash).
 // This is a synchronous operation, and can cause performance issues if
 // frequent random disk access is slow. Data is still stored in and
 // accessed from memory - reading from disk is only done on startup.
+// When targeting ESP-IDF, LittleFS is used to manage flash reads and
+// writes. Consider increasing DISK_SYNC_INTERVAL if wear is a concern.
 #define SYNC_WORLD_TO_DISK
+// The minimum interval (in microseconds) at which certain data is written
+// to disk/flash. Bounded on the low end by TIME_BETWEEN_TICKS. Currently
+// only applies to player data. Block changes are written as soon as they
+// are made, but in much smaller portions.
+#define DISK_SYNC_INTERVAL 15000000
 // If defined, scales the frequency at which player movement updates are
 // broadcast based on the amount of players, reducing overhead for higher
 // player counts. For very many players, makes movement look jittery.
