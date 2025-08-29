@@ -95,17 +95,16 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
 
         // Prepare join message for broadcast
         uint8_t player_name_len = strlen(player->name);
-        char join_message[16 + player_name_len];
-        strcpy(join_message, player->name);
-        strcpy(join_message + player_name_len, " joined the game");
+        strcpy((char *)recv_buffer, player->name);
+        strcpy((char *)recv_buffer + player_name_len, " joined the game");
 
         // Register all existing players and spawn their entities, and broadcast
         // information about the joining player to all existing players.
         for (int i = 0; i < MAX_PLAYERS; i ++) {
           if (player_data[i].client_fd == -1) continue;
-          if (player_data[i].flags & 0x20) continue;
+          if (player_data[i].flags & 0x20 && player_data[i].client_fd != client_fd) continue;
           sc_playerInfoUpdateAddPlayer(client_fd, player_data[i]);
-          sc_systemChat(player_data[i].client_fd, join_message, 16 + player_name_len);
+          sc_systemChat(player_data[i].client_fd, (char *)recv_buffer, 16 + player_name_len);
           if (player_data[i].client_fd == client_fd) continue;
           sc_playerInfoUpdateAddPlayer(player_data[i].client_fd, *player);
           sc_spawnEntityPlayer(client_fd, player_data[i]);
@@ -449,7 +448,7 @@ void disconnectClient (int *client_fd, int cause) {
   if (*client_fd == -1) return;
   client_count --;
   setClientState(*client_fd, STATE_NONE);
-  clearPlayerFD(*client_fd);
+  handlePlayerDisconnect(*client_fd);
   close(*client_fd);
   *client_fd = -1;
   printf("Disconnected client %d, cause: %d, errno: %d\n\n", *client_fd, cause, errno);

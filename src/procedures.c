@@ -106,17 +106,34 @@ int getPlayerData (int client_fd, PlayerData **output) {
   return 1;
 }
 
-void clearPlayerFD (int client_fd) {
+// Marks a client as disconnected and cleans up player data
+void handlePlayerDisconnect (int client_fd) {
+  // Search for a corresponding player in the player data array
   for (int i = 0; i < MAX_PLAYERS; i ++) {
-    if (player_data[i].client_fd == client_fd) {
-      player_data[i].client_fd = -1;
-      for (int j = 0; j < VISITED_HISTORY; j ++) {
-        player_data[i].visited_x[j] = 32767;
-        player_data[i].visited_z[j] = 32767;
-      }
-      break;
+    if (player_data[i].client_fd != client_fd) continue;
+    // Mark the player as being offline
+    player_data[i].client_fd = -1;
+    // Reset their recently visited chunk list
+    for (int j = 0; j < VISITED_HISTORY; j ++) {
+      player_data[i].visited_x[j] = 32767;
+      player_data[i].visited_z[j] = 32767;
     }
+    // Prepare leave message for broadcast
+    uint8_t player_name_len = strlen(player_data[i].name);
+    strcpy((char *)recv_buffer, player_data[i].name);
+    strcpy((char *)recv_buffer + player_name_len, " left the game");
+    // Broadcast this player's leave to all other connected clients
+    for (int j = 0; j < MAX_PLAYERS; j ++) {
+      if (player_data[j].client_fd == client_fd) continue;
+      if (player_data[j].flags & 0x20) continue;
+      // Send chat message
+      sc_systemChat(player_data[j].client_fd, (char *)recv_buffer, 14 + player_name_len);
+      // Remove leaving player's entity
+      sc_removeEntity(player_data[j].client_fd, client_fd);
+    }
+    break;
   }
+  // Find the client state entry and reset it
   for (int i = 0; i < MAX_PLAYERS * 2; i += 2) {
     if (client_states[i] == client_fd) {
       client_states[i] = -1;
