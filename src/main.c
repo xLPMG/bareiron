@@ -1,7 +1,5 @@
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <fcntl.h>
 #include <errno.h>
 
@@ -15,13 +13,13 @@
   #include "nvs_flash.h"
   #include "esp_wifi.h"
   #include "esp_event.h"
-  #include "esp_task_wdt.h"
   #include "esp_timer.h"
   #include "lwip/sockets.h"
   #include "lwip/netdb.h"
 #else
   #include <arpa/inet.h>
   #include <unistd.h>
+  #include <time.h>
 #endif
 
 #include "globals.h"

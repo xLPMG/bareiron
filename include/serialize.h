@@ -1,8 +1,6 @@
 #ifndef SERIALIZE_H
 #define SERIALIZE_H
 
-#include <stdlib.h>
-
 #include "globals.h"
 
 #if defined(SYNC_WORLD_TO_DISK) && !defined(ESP_PLATFORM)

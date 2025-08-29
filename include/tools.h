@@ -1,7 +1,6 @@
 #ifndef H_TOOLS
 #define H_TOOLS
 
-#include <stdlib.h>
 #include <unistd.h>
 
 #include "globals.h"

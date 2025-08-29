@@ -1,7 +1,6 @@
 #ifndef H_PROCEDURES
 #define H_PROCEDURES
 
-#include <stdlib.h>
 #include <unistd.h>
 
 #include "globals.h"
