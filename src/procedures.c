@@ -70,6 +70,7 @@ int reservePlayerData (int client_fd, uint8_t *uuid, char *name) {
     if (memcmp(player_data[i].uuid, uuid, 16) == 0) {
       player_data[i].client_fd = client_fd;
       player_data[i].flags |= 0x20;
+      player_data[i].flagval_16 = 0;
       memcpy(player_data[i].name, name, 16);
       return 0;
     }
@@ -84,6 +85,7 @@ int reservePlayerData (int client_fd, uint8_t *uuid, char *name) {
       if (player_data_count >= MAX_PLAYERS) return 1;
       player_data[i].client_fd = client_fd;
       player_data[i].flags |= 0x20;
+      player_data[i].flagval_16 = 0;
       memcpy(player_data[i].uuid, uuid, 16);
       memcpy(player_data[i].name, name, 16);
       resetPlayerData(&player_data[i]);
