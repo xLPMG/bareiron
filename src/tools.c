@@ -38,7 +38,7 @@ ssize_t recv_all (int client_fd, void *buf, size_t n, uint8_t require_first) {
 
   // Track time of last meaningful network update
   // Used to handle timeout when client is stalling
-  int32_t last_update_time = get_program_time();
+  int64_t last_update_time = get_program_time();
 
   // If requested, exit early when first byte not immediately available
   if (require_first) {
@@ -84,7 +84,7 @@ ssize_t send_all (int client_fd, const void *buf, ssize_t len) {
 
   // Track time of last meaningful network update
   // Used to handle timeout when client is stalling
-  int32_t last_update_time = get_program_time();
+  int64_t last_update_time = get_program_time();
 
   // Busy-wait (with task yielding) until all data has been sent
   while (sent < len) {
