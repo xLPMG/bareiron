@@ -415,7 +415,7 @@ uint8_t buildChunkSection (int cx, int cy, int cz) {
     for (int j = 0; j < 16; j ++) {
       anchor_index = (j / CHUNK_SIZE) + (i / CHUNK_SIZE) * (16 / CHUNK_SIZE + 1);
       ChunkAnchor *anchor_ptr = chunk_anchors + anchor_index;
-      chunk_section_height[j][i] = getHeightAtFromAnchors(j % 8, i % 8, anchor_ptr);
+      chunk_section_height[j][i] = getHeightAtFromAnchors(j % CHUNK_SIZE, i % CHUNK_SIZE, anchor_ptr);
     }
   }
 
@@ -425,6 +425,7 @@ uint8_t buildChunkSection (int cx, int cy, int cz) {
     // since all of the operations are on multiples of 8
     int y = j / 256 + cy;
     int rz = j / 16 % 16;
+    int rz_mod = rz % CHUNK_SIZE;
     feature_index = (j % 16) / CHUNK_SIZE + (j / 16 % 16) / CHUNK_SIZE * (16 / CHUNK_SIZE);
     anchor_index = (j % 16) / CHUNK_SIZE + (j / 16 % 16) / CHUNK_SIZE * (16 / CHUNK_SIZE + 1);
     // The client expects "big-endian longs", which in our
@@ -433,8 +434,14 @@ uint8_t buildChunkSection (int cx, int cy, int cz) {
     for (int offset = 7; offset >= 0; offset--) {
       int k = j + offset;
       int rx = k % 16;
-      uint8_t height = chunk_section_height[rx][rz];
-      chunk_section[j + 7 - offset] = getTerrainAtFromCache(rx + cx, y, rz + cz, rx, rz, chunk_anchors[anchor_index], chunk_features[feature_index], height);
+      // Combine all of the cached data to retrieve the block
+      chunk_section[j + 7 - offset] = getTerrainAtFromCache(
+        rx + cx, y, rz + cz,
+        rx % CHUNK_SIZE, rz_mod,
+        chunk_anchors[anchor_index],
+        chunk_features[feature_index],
+        chunk_section_height[rx][rz]
+      );
     }
   }
 
