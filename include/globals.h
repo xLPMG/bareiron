@@ -43,8 +43,11 @@
 // frequent random disk access is slow. Data is still stored in and
 // accessed from memory - reading from disk is only done on startup.
 // When targeting ESP-IDF, LittleFS is used to manage flash reads and
-// writes. Consider increasing DISK_SYNC_INTERVAL if wear is a concern.
-#define SYNC_WORLD_TO_DISK
+// writes. Flash is typically *very* slow and unreliable, which is why
+// this option is disabled by default when targeting ESP-IDF.
+#ifndef ESP_PLATFORM
+  #define SYNC_WORLD_TO_DISK
+#endif
 // The minimum interval (in microseconds) at which certain data is written
 // to disk/flash. Bounded on the low end by TIME_BETWEEN_TICKS. Currently
 // only applies to player data. Block changes are written as soon as they
