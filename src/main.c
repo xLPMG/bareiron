@@ -572,6 +572,24 @@ int main () {
       continue;
     }
 
+    // Received FEED packet, load world data from socket and disconnect
+    if (recv_buffer[0] == 0xFE && recv_buffer[1] == 0xED && getClientState(client_fd) == STATE_NONE) {
+      // Consume 0xFEED bytes (previous read was just a peek)
+      recv_all(client_fd, recv_buffer, 2, false);
+      // Write full buffers straight into memory
+      recv_all(client_fd, block_changes, sizeof(block_changes), false);
+      recv_all(client_fd, player_data, sizeof(player_data), false);
+      // Recover block_changes_count
+      for (int i = 0; i < MAX_BLOCK_CHANGES; i ++) {
+        if (block_changes[i].block == 0xFF) continue;
+        if (block_changes[i].block == B_chest) i += 14;
+        if (i >= block_changes_count) block_changes_count = i + 1;
+      }
+      // Kick the client
+      disconnectClient(&clients[client_index], 7);
+      continue;
+    }
+
     // Read packet length
     int length = readVarInt(client_fd);
     if (length == VARNUM_ERROR) {
