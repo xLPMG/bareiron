@@ -568,6 +568,20 @@ int main () {
       continue;
     }
 
+    // Received BEEF packet, dump world data and disconnect
+    if (recv_buffer[0] == 0xBE && recv_buffer[1] == 0xEF && getClientState(client_fd) == STATE_NONE) {
+      // Send block changes and player data back to back
+      // The client is expected to know (or calculate) the size of these buffers
+      send_all(client_fd, block_changes, sizeof(block_changes));
+      send_all(client_fd, player_data, sizeof(player_data));
+      // Flush the socket and receive everything left on the wire
+      shutdown(client_fd, SHUT_WR);
+      recv_all(client_fd, recv_buffer, sizeof(recv_buffer), false);
+      // Kick the client
+      disconnectClient(&clients[client_index], 6);
+      continue;
+    }
+
     // Read packet length
     int length = readVarInt(client_fd);
     if (length == VARNUM_ERROR) {
