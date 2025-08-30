@@ -64,7 +64,8 @@
 // and use some terrible memory hacks to function. On some platforms, this
 // could cause bad performance or even crashes during gameplay.
 #define ALLOW_CHESTS
-// If defined, enables flight for all players
+// If defined, enables flight for all players. As a side-effect, allows
+// players to sprint when starving.
 // #define ENABLE_PLAYER_FLIGHT
 
 // If defined, logs unrecognized packet IDs
