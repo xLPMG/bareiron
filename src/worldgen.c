@@ -48,12 +48,12 @@ uint8_t getChunkBiome (short x, short z) {
 
 }
 
-int getCornerHeight (uint32_t hash, uint8_t biome) {
+uint8_t getCornerHeight (uint32_t hash, uint8_t biome) {
 
   // When calculating the height, parts of the hash are used as random values.
   // Often, multiple values are stacked to stabilize the distribution while
   // allowing for occasionally larger variances.
-  int height = TERRAIN_BASE_HEIGHT;
+  uint8_t height = TERRAIN_BASE_HEIGHT;
 
   switch (biome) {
 
@@ -114,13 +114,32 @@ int getCornerHeight (uint32_t hash, uint8_t biome) {
 
 }
 
-int interpolate (int a, int b, int c, int d, int x, int z) {
-  int top    = a * (CHUNK_SIZE - x) + b * x;
-  int bottom = c * (CHUNK_SIZE - x) + d * x;
+uint8_t interpolate (uint8_t a, uint8_t b, uint8_t c, uint8_t d, int x, int z) {
+  uint16_t top    = a * (CHUNK_SIZE - x) + b * x;
+  uint16_t bottom = c * (CHUNK_SIZE - x) + d * x;
   return (top * (CHUNK_SIZE - z) + bottom * z) / (CHUNK_SIZE * CHUNK_SIZE);
 }
 
-int getHeightAtFromHash (int rx, int rz, int _x, int _z, uint32_t chunk_hash, uint8_t biome) {
+// Calculates terrain height using a pointer to an array of anchors
+// The pointer should point towards the minichunk containing the desired
+// coordinates, with available neighbors on +X and +Z.
+uint8_t getHeightAtFromAnchors (int rx, int rz, ChunkAnchor *anchor_ptr) {
+
+  if (rx == 0 && rz == 0) {
+    int height = getCornerHeight(anchor_ptr[0].hash, anchor_ptr[0].biome);
+    if (height > 67) return height - 1;
+  }
+  return interpolate(
+    getCornerHeight(anchor_ptr[0].hash, anchor_ptr[0].biome),
+    getCornerHeight(anchor_ptr[1].hash, anchor_ptr[1].biome),
+    getCornerHeight(anchor_ptr[16 / CHUNK_SIZE + 1].hash, anchor_ptr[16 / CHUNK_SIZE + 1].biome),
+    getCornerHeight(anchor_ptr[16 / CHUNK_SIZE + 2].hash, anchor_ptr[16 / CHUNK_SIZE + 2].biome),
+    rx, rz
+  );
+
+}
+
+uint8_t getHeightAtFromHash (int rx, int rz, int _x, int _z, uint32_t chunk_hash, uint8_t biome) {
 
   if (rx == 0 && rz == 0) {
     int height = getCornerHeight(chunk_hash, biome);
@@ -136,7 +155,9 @@ int getHeightAtFromHash (int rx, int rz, int _x, int _z, uint32_t chunk_hash, ui
 
 }
 
-int getHeightAt (int x, int z) {
+// Get terrain height at the given coordinates
+// Does *not* account for block changes
+uint8_t getHeightAt (int x, int z) {
 
   int _x = div_floor(x, CHUNK_SIZE);
   int _z = div_floor(z, CHUNK_SIZE);
@@ -149,74 +170,47 @@ int getHeightAt (int x, int z) {
 
 }
 
-uint8_t getTerrainAt (int x, int y, int z, ChunkAnchor anchor) {
-
-  if (y > 80) return B_air;
-
-  int rx = x % CHUNK_SIZE;
-  int rz = z % CHUNK_SIZE;
-  if (rx < 0) rx += CHUNK_SIZE;
-  if (rz < 0) rz += CHUNK_SIZE;
-
-  int height = getHeightAtFromHash(rx, rz, anchor.x, anchor.z, anchor.hash, anchor.biome);
+uint8_t getTerrainAtFromCache (int x, int y, int z, int rx, int rz, ChunkAnchor anchor, ChunkFeature feature, uint8_t height) {
 
   if (y < 64 || y < height) goto skip_feature;
-
-  uint8_t feature_position = anchor.hash % (CHUNK_SIZE * CHUNK_SIZE);
-
-  short feature_x = feature_position % CHUNK_SIZE;
-  short feature_z = feature_position / CHUNK_SIZE;
-
-  // The following check does two things:
-  //  firstly, it ensures that trees don't cross chunk boundaries;
-  //  secondly, it reduces overall feature count. This is favorable
-  //  everywhere except for swamps, which are otherwise very boring.
-  if (anchor.biome != W_mangrove_swamp) {
-    if (feature_x < 3 || feature_x > CHUNK_SIZE - 3) goto skip_feature;
-    if (feature_z < 3 || feature_z > CHUNK_SIZE - 3) goto skip_feature;
-  }
-
-  uint8_t feature_variant = (anchor.hash >> (feature_x + feature_z)) & 1;
-
-  feature_x += anchor.x * CHUNK_SIZE;
-  feature_z += anchor.z * CHUNK_SIZE;
 
   switch (anchor.biome) {
     case W_plains: { // Generate trees in the plains biome
 
-      uint8_t feature_y = getHeightAtFromHash(
-        feature_x < 0 ? feature_x % CHUNK_SIZE + CHUNK_SIZE : feature_x % CHUNK_SIZE,
-        feature_z < 0 ? feature_z % CHUNK_SIZE + CHUNK_SIZE : feature_z % CHUNK_SIZE,
-        anchor.x, anchor.z, anchor.hash, anchor.biome
-      ) + 1;
-      if (feature_y < 64) break;
+      // Don't generate trees underwater
+      if (feature.y < 64) break;
 
-      if (x == feature_x && z == feature_z) {
-        if (y == feature_y - 1) return B_dirt;
-        if (y >= feature_y && y < feature_y - feature_variant + 6) return B_oak_log;
+      // Handle tree stem and the dirt under it
+      if (x == feature.x && z == feature.z) {
+        if (y == feature.y - 1) return B_dirt;
+        if (y >= feature.y && y < feature.y - feature.variant + 6) return B_oak_log;
       }
 
-      uint8_t dx = x > feature_x ? x - feature_x : feature_x - x;
-      uint8_t dz = z > feature_z ? z - feature_z : feature_z - z;
+      // Get X/Z distance from center of tree
+      uint8_t dx = x > feature.x ? x - feature.x : feature.x - x;
+      uint8_t dz = z > feature.z ? z - feature.z : feature.z - z;
 
-      if (dx < 3 && dz < 3 && y > feature_y - feature_variant + 2 && y < feature_y - feature_variant + 5) {
-        if (y == feature_y - feature_variant + 4 && dx == 2 && dz == 2) break;
+      // Generate leaf clusters
+      if (dx < 3 && dz < 3 && y > feature.y - feature.variant + 2 && y < feature.y - feature.variant + 5) {
+        if (y == feature.y - feature.variant + 4 && dx == 2 && dz == 2) break;
         return B_oak_leaves;
       }
-      if (dx < 2 && dz < 2 && y >= feature_y - feature_variant + 5 && y <= feature_y - feature_variant + 6) {
-        if (y == feature_y - feature_variant + 6 && dx == 1 && dz == 1) break;
+      if (dx < 2 && dz < 2 && y >= feature.y - feature.variant + 5 && y <= feature.y - feature.variant + 6) {
+        if (y == feature.y - feature.variant + 6 && dx == 1 && dz == 1) break;
         return B_oak_leaves;
       }
 
+      // Since we're sure that we're above sea level and in a plains biome,
+      // there's no need to drop down to decide the surrounding blocks.
       if (y == height) return B_grass_block;
       return B_air;
     }
 
     case W_desert: { // Generate dead bushes and cacti in deserts
 
-      if (x != feature_x || z != feature_z) break;
+      if (x != feature.x || z != feature.z) break;
 
-      if (feature_variant == 0) {
+      if (feature.variant == 0) {
         if (y == height + 1) return B_dead_bush;
       } else if (y > height) {
         // The size of the cactus is determined based on whether the terrain
@@ -231,13 +225,13 @@ uint8_t getTerrainAt (int x, int y, int z, ChunkAnchor anchor) {
 
     case W_mangrove_swamp: { // Generate lilypads and moss carpets in swamps
 
-      if (x == feature_x && z == feature_z && y == 64 && height < 63) {
+      if (x == feature.x && z == feature.z && y == 64 && height < 63) {
         return B_lily_pad;
       }
 
       if (y == height + 1) {
-        uint8_t dx = x > feature_x ? x - feature_x : feature_x - x;
-        uint8_t dz = z > feature_z ? z - feature_z : feature_z - z;
+        uint8_t dx = x > feature.x ? x - feature.x : feature.x - x;
+        uint8_t dz = z > feature.z ? z - feature.z : feature.z - z;
         if (dx + dz < 4) return B_moss_carpet;
       }
 
@@ -246,7 +240,7 @@ uint8_t getTerrainAt (int x, int y, int z, ChunkAnchor anchor) {
 
     case W_snowy_plains: { // Generate grass stubs in snowy plains
 
-      if (x == feature_x && z == feature_z && y == height + 1 && height >= 64) {
+      if (x == feature.x && z == feature.z && y == height + 1 && height >= 64) {
         return B_short_grass;
       }
 
@@ -316,35 +310,88 @@ skip_feature:
 
 }
 
+ChunkFeature getFeatureFromAnchor (ChunkAnchor anchor) {
+
+  ChunkFeature feature;
+  uint8_t feature_position = anchor.hash % (CHUNK_SIZE * CHUNK_SIZE);
+
+  feature.x = feature_position % CHUNK_SIZE;
+  feature.z = feature_position / CHUNK_SIZE;
+  uint8_t skip_feature = false;
+
+  // The following check does two things:
+  //  firstly, it ensures that trees don't cross chunk boundaries;
+  //  secondly, it reduces overall feature count. This is favorable
+  //  everywhere except for swamps, which are otherwise very boring.
+  if (anchor.biome != W_mangrove_swamp) {
+    if (feature.x < 3 || feature.x > CHUNK_SIZE - 3) skip_feature = true;
+    else if (feature.z < 3 || feature.z > CHUNK_SIZE - 3) skip_feature = true;
+  }
+
+  if (skip_feature) {
+    // Skipped features are indicated by a Y coordinate of 0xFF (255)
+    feature.y = 0xFF;
+  } else {
+    feature.x += anchor.x * CHUNK_SIZE;
+    feature.z += anchor.z * CHUNK_SIZE;
+    feature.y = getHeightAtFromHash(
+      mod_abs(feature.x, CHUNK_SIZE), mod_abs(feature.z, CHUNK_SIZE),
+      anchor.x, anchor.z, anchor.hash, anchor.biome
+    ) + 1;
+    feature.variant = (anchor.hash >> (feature.x + feature.z)) & 1;
+  }
+
+  return feature;
+
+}
+
+uint8_t getTerrainAt (int x, int y, int z, ChunkAnchor anchor) {
+
+  if (y > 80) return B_air;
+
+  int rx = x % CHUNK_SIZE;
+  int rz = z % CHUNK_SIZE;
+  if (rx < 0) rx += CHUNK_SIZE;
+  if (rz < 0) rz += CHUNK_SIZE;
+
+  ChunkFeature feature = getFeatureFromAnchor(anchor);
+  uint8_t height = getHeightAtFromHash(rx, rz, anchor.x, anchor.z, anchor.hash, anchor.biome);
+
+  return getTerrainAtFromCache(x, y, z, rx, rz, anchor, feature, height);
+
+}
+
 uint8_t getBlockAt (int x, int y, int z) {
 
   uint8_t block_change = getBlockChange(x, y, z);
   if (block_change != 0xFF) return block_change;
 
+  short anchor_x = div_floor(x, CHUNK_SIZE);
+  short anchor_z = div_floor(z, CHUNK_SIZE);
   ChunkAnchor anchor = {
-    x / CHUNK_SIZE,
-    z / CHUNK_SIZE
+    .x = anchor_x,
+    .z = anchor_z,
+    .hash = getChunkHash(anchor_x, anchor_z),
+    .biome = getChunkBiome(anchor_x, anchor_z)
   };
-  if (x % CHUNK_SIZE < 0) anchor.x --;
-  if (z % CHUNK_SIZE < 0) anchor.z --;
-  anchor.hash = getChunkHash(anchor.x, anchor.z);
-  anchor.biome = getChunkBiome(anchor.x, anchor.z);
 
   return getTerrainAt(x, y, z, anchor);
 
 }
 
 uint8_t chunk_section[4096];
-ChunkAnchor chunk_anchors[256 / (CHUNK_SIZE * CHUNK_SIZE)];
+ChunkAnchor chunk_anchors[(16 / CHUNK_SIZE + 1) * (16 / CHUNK_SIZE + 1)];
+ChunkFeature chunk_features[256 / (CHUNK_SIZE * CHUNK_SIZE)];
+uint8_t chunk_section_height[16][16];
 
 // Builds a 16x16x16 chunk of blocks and writes it to `chunk_section`
 // Returns the biome at the origin corner of the chunk
 uint8_t buildChunkSection (int cx, int cy, int cz) {
 
-  // Precompute the hashes and anchors for each minichunk
-  int anchor_index = 0;
-  for (int i = cz; i < cz + 16; i += CHUNK_SIZE) {
-    for (int j = cx; j < cx + 16; j += CHUNK_SIZE) {
+  // Precompute hashes, anchors and features for each relevant minichunk
+  int anchor_index = 0, feature_index = 0;
+  for (int i = cz; i < cz + 16 + CHUNK_SIZE; i += CHUNK_SIZE) {
+    for (int j = cx; j < cx + 16 + CHUNK_SIZE; j += CHUNK_SIZE) {
 
       ChunkAnchor *anchor = chunk_anchors + anchor_index;
 
@@ -353,7 +400,22 @@ uint8_t buildChunkSection (int cx, int cy, int cz) {
       anchor->hash = getChunkHash(anchor->x, anchor->z);
       anchor->biome = getChunkBiome(anchor->x, anchor->z);
 
+      // Compute chunk features for the minichunks within this section
+      if (i != cz + 16 && j != cx + 16) {
+        chunk_features[feature_index] = getFeatureFromAnchor(*anchor);
+        feature_index ++;
+      }
+
       anchor_index ++;
+    }
+  }
+
+  // Precompute terrain height for entire chunk section
+  for (int i = 0; i < 16; i ++) {
+    for (int j = 0; j < 16; j ++) {
+      anchor_index = (j / CHUNK_SIZE) + (i / CHUNK_SIZE) * (16 / CHUNK_SIZE + 1);
+      ChunkAnchor *anchor_ptr = chunk_anchors + anchor_index;
+      chunk_section_height[j][i] = getHeightAtFromAnchors(j % 8, i % 8, anchor_ptr);
     }
   }
 
@@ -362,15 +424,17 @@ uint8_t buildChunkSection (int cx, int cy, int cz) {
     // These values don't change in the lower array,
     // since all of the operations are on multiples of 8
     int y = j / 256 + cy;
-    int z = j / 16 % 16 + cz;
+    int rz = j / 16 % 16;
+    feature_index = (j % 16) / CHUNK_SIZE + (j / 16 % 16) / CHUNK_SIZE * (16 / CHUNK_SIZE);
+    anchor_index = (j % 16) / CHUNK_SIZE + (j / 16 % 16) / CHUNK_SIZE * (16 / CHUNK_SIZE + 1);
     // The client expects "big-endian longs", which in our
     // case means reversing the order in which we store/send
     // each 8 block sequence.
-    anchor_index = (j % 16) / CHUNK_SIZE + (j / 16 % 16) / CHUNK_SIZE * 2;
     for (int offset = 7; offset >= 0; offset--) {
       int k = j + offset;
-      int x = k % 16 + cx;
-      chunk_section[j + 7 - offset] = getTerrainAt(x, y, z, chunk_anchors[anchor_index]);
+      int rx = k % 16;
+      uint8_t height = chunk_section_height[rx][rz];
+      chunk_section[j + 7 - offset] = getTerrainAtFromCache(rx + cx, y, rz + cz, rx, rz, chunk_anchors[anchor_index], chunk_features[feature_index], height);
     }
   }
 
