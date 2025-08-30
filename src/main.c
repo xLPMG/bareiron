@@ -444,16 +444,6 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
 
 }
 
-void disconnectClient (int *client_fd, int cause) {
-  if (*client_fd == -1) return;
-  client_count --;
-  setClientState(*client_fd, STATE_NONE);
-  handlePlayerDisconnect(*client_fd);
-  close(*client_fd);
-  *client_fd = -1;
-  printf("Disconnected client %d, cause: %d, errno: %d\n\n", *client_fd, cause, errno);
-}
-
 int main () {
 
   // Hash the seeds to ensure they're random enough
@@ -655,6 +645,7 @@ void wifi_init () {
 
   esp_wifi_set_mode(WIFI_MODE_STA);
   esp_wifi_set_config(WIFI_IF_STA, &wifi_config);
+  esp_wifi_set_ps(WIFI_PS_NONE);
   esp_wifi_start();
 }
 

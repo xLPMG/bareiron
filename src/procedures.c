@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #include "globals.h"
 #include "tools.h"
@@ -143,6 +144,16 @@ void handlePlayerDisconnect (int client_fd) {
       return;
     }
   }
+}
+
+void disconnectClient (int *client_fd, int cause) {
+  if (*client_fd == -1) return;
+  client_count --;
+  setClientState(*client_fd, STATE_NONE);
+  handlePlayerDisconnect(*client_fd);
+  close(*client_fd);
+  *client_fd = -1;
+  printf("Disconnected client %d, cause: %d, errno: %d\n\n", *client_fd, cause, errno);
 }
 
 uint8_t serverSlotToClientSlot (int window_id, uint8_t slot) {

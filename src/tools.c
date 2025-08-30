@@ -17,6 +17,7 @@
 
 #include "globals.h"
 #include "varnum.h"
+#include "procedures.h"
 #include "tools.h"
 
 static uint64_t htonll (uint64_t value) {
@@ -57,7 +58,10 @@ ssize_t recv_all (int client_fd, void *buf, size_t n, uint8_t require_first) {
     if (r < 0) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         // handle network timeout
-        if (get_program_time() - last_update_time > NETWORK_TIMEOUT_TIME) return -1;
+        if (get_program_time() - last_update_time > NETWORK_TIMEOUT_TIME) {
+          disconnectClient(&client_fd, -1);
+          return -1;
+        }
         task_yield();
         continue;
       } else {
@@ -101,7 +105,10 @@ ssize_t send_all (int client_fd, const void *buf, ssize_t len) {
     // not yet ready to transmit, try again
     if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) {
       // handle network timeout
-      if (get_program_time() - last_update_time > NETWORK_TIMEOUT_TIME) return -1;
+      if (get_program_time() - last_update_time > NETWORK_TIMEOUT_TIME) {
+        disconnectClient(&client_fd, -2);
+        return -1;
+      }
       task_yield();
       continue;
     }
