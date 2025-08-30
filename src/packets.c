@@ -1147,6 +1147,18 @@ int cs_playerCommand (int client_fd) {
   return 0;
 }
 
+// S->C Pickup Item (take_item_entity)
+int sc_pickupItem (int client_fd, int collected, int collector, uint8_t count) {
+
+  writeVarInt(client_fd, 1 + sizeVarInt(collected) + sizeVarInt(collector) + sizeVarInt(count));
+  writeByte(client_fd, 0x75);
+
+  writeVarInt(client_fd, collected);
+  writeVarInt(client_fd, collector);
+  writeVarInt(client_fd, count);
+
+}
+
 // S->C Registry Data (multiple packets) and Update Tags (configuration, multiple packets)
 int sc_registries (int client_fd) {
 

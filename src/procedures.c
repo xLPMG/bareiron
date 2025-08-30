@@ -4,6 +4,7 @@
 
 #include "globals.h"
 #include "tools.h"
+#include "varnum.h"
 #include "packets.h"
 #include "registries.h"
 #include "worldgen.h"
@@ -847,6 +848,41 @@ void checkFluidUpdate (short x, uint8_t y, short z, uint8_t block) {
 
 }
 
+#ifdef ENABLE_PICKUP_ANIMATION
+// Plays the item pickup animation with the given item at the given coordinates
+void playPickupAnimation (PlayerData *player, uint16_t item, double x, double y, double z) {
+
+  // Spawn a new item entity at the input coordinates
+  // ID -1 is safe, as elsewhere it's reserved as a placeholder
+  // The player's name is used as the UUID as it's cheap and unique enough
+  sc_spawnEntity(player->client_fd, -1, (uint8_t *)player->name, 69, x + 0.5, y + 0.5, z + 0.5, 0, 0);
+
+  // Write a Set Entity Metadata packet for the item
+  // There's no packets.c entry for this, as it's not cheaply generalizable
+  writeVarInt(player->client_fd, 12 + sizeVarInt(item));
+  writeByte(player->client_fd, 0x5C);
+  writeVarInt(player->client_fd, -1);
+
+  // Describe slot data array entry
+  writeByte(player->client_fd, 8);
+  writeByte(player->client_fd, 7);
+  // Send slot data
+  writeByte(player->client_fd, 1);
+  writeVarInt(player->client_fd, item);
+  writeByte(player->client_fd, 0);
+  writeByte(player->client_fd, 0);
+  // Terminate entity metadata array
+  writeByte(player->client_fd, 0xFF);
+
+  // Send the Pickup Item packet targeting this entity
+  sc_pickupItem(player->client_fd, -1, player->client_fd, 1);
+
+  // Remove the item entity from the client right away
+  sc_removeEntity(player->client_fd, -1);
+
+}
+#endif
+
 void handlePlayerAction (PlayerData *player, int action, short x, short y, short z) {
 
   // Re-sync slot when player drops an item
@@ -884,11 +920,17 @@ void handlePlayerAction (PlayerData *player, int action, short x, short y, short
 
   // Don't continue if the block change failed
   if (makeBlockChange(x, y, z, 0)) return;
+  bumpToolDurability(player);
 
   uint16_t held_item = player->inventory_items[player->hotbar];
   uint16_t item = getMiningResult(held_item, block);
-  if (item) givePlayerItem(player, item, 1);
-  bumpToolDurability(player);
+
+  if (item) {
+    #ifdef ENABLE_PICKUP_ANIMATION
+    playPickupAnimation(player, item, x, y, z);
+    #endif
+    givePlayerItem(player, item, 1);
+  }
 
   // Update nearby fluids
   uint8_t block_above = getBlockAt(x, y + 1, z);

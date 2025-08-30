@@ -67,6 +67,12 @@
 // If defined, enables flight for all players. As a side-effect, allows
 // players to sprint when starving.
 // #define ENABLE_PLAYER_FLIGHT
+// If defined, enables the item pickup animation when mining a block/
+// Does not affect how item pickups work! Items from broken blocks still
+// get placed directly in the inventory, this is just an animation.
+// Relatively inexpensive, though requires sending a few more packets
+// every time a block is broken.
+#define ENABLE_PICKUP_ANIMATION
 
 // If defined, logs unrecognized packet IDs
 // #define DEV_LOG_UNKNOWN_PACKETS

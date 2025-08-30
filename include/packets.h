@@ -54,6 +54,7 @@ int sc_respawn (int client_fd);
 int sc_systemChat (int client_fd, char* message, uint16_t len);
 int sc_entityEvent (int client_fd, int entity_id, uint8_t status);
 int sc_removeEntity (int client_fd, int entity_id);
+int sc_pickupItem (int client_fd, int collected, int collector, uint8_t count);
 int sc_registries (int client_fd);
 
 #endif
