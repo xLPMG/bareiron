@@ -1157,6 +1157,7 @@ int sc_pickupItem (int client_fd, int collected, int collector, uint8_t count) {
   writeVarInt(client_fd, collector);
   writeVarInt(client_fd, count);
 
+  return 0;
 }
 
 // S->C Registry Data (multiple packets) and Update Tags (configuration, multiple packets)
