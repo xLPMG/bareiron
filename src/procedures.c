@@ -1376,47 +1376,51 @@ void handleServerTick (int64_t time_since_last_tick) {
 
   // Update world time
   world_time = (world_time + time_since_last_tick / 50000) % 24000;
+  // Increment server tick counter
+  server_ticks ++;
 
   // Update player events
   for (int i = 0; i < MAX_PLAYERS; i ++) {
-    if (player_data[i].client_fd == -1) continue; // Skip offline players
-    if (player_data[i].flags & 0x20) { // Check "client loading" flag
+    PlayerData *player = &player_data[i];
+    if (player->client_fd == -1) continue; // Skip offline players
+    if (player->flags & 0x20) { // Check "client loading" flag
       // If 3 seconds (60 vanilla ticks) have passed, assume player has loaded
-      player_data[i].flagval_16 ++;
-      if (player_data[i].flagval_16 > (unsigned int)(3 * TICKS_PER_SECOND)) {
-        player_data[i].flags &= ~0x20;
-        player_data[i].flagval_16 = 0;
+      player->flagval_16 ++;
+      if (player->flagval_16 > (unsigned int)(3 * TICKS_PER_SECOND)) {
+        player->flags &= ~0x20;
+        player->flagval_16 = 0;
       } else continue;
     }
     // Send Keep Alive and Update Time packets
-    sc_keepAlive(player_data[i].client_fd);
-    sc_updateTime(player_data[i].client_fd, world_time);
+    sc_keepAlive(player->client_fd);
+    sc_updateTime(player->client_fd, world_time);
     // Reset player attack cooldown
-    if (player_data[i].flags & 0x01) {
-      if (player_data[i].flagval_8 >= (unsigned int)(0.6f * TICKS_PER_SECOND)) {
-        player_data[i].flags &= ~0x01;
-        player_data[i].flagval_8 = 0;
-      } else player_data[i].flagval_8 ++;
+    if (player->flags & 0x01) {
+      if (player->flagval_8 >= (unsigned int)(0.6f * TICKS_PER_SECOND)) {
+        player->flags &= ~0x01;
+        player->flagval_8 = 0;
+      } else player->flagval_8 ++;
     }
     // Handle eating animation
-    if (player_data[i].flags & 0x10) {
-      if (player_data[i].flagval_16 >= (unsigned int)(1.6f * TICKS_PER_SECOND)) {
+    if (player->flags & 0x10) {
+      if (player->flagval_16 >= (unsigned int)(1.6f * TICKS_PER_SECOND)) {
         handlePlayerEating(&player_data[i], false);
-        player_data[i].flags &= ~0x10;
-        player_data[i].flagval_16 = 0;
-      } else player_data[i].flagval_16 ++;
+        player->flags &= ~0x10;
+        player->flagval_16 = 0;
+      } else player->flagval_16 ++;
     }
     // Heal from saturation if player is able and has enough food
-    if (player_data[i].health >= 20 || player_data[i].health == 0) continue;
-    if (player_data[i].hunger < 18) continue;
-    if (player_data[i].saturation >= 600) {
-      player_data[i].saturation -= 600;
-      player_data[i].health ++;
+    if (server_ticks % (uint32_t)TICKS_PER_SECOND != 0) continue;
+    if (player->health >= 20 || player->health == 0) continue;
+    if (player->hunger < 18) continue;
+    if (player->saturation >= 600) {
+      player->saturation -= 600;
+      player->health ++;
     } else {
-      player_data[i].hunger --;
-      player_data[i].health ++;
+      player->hunger --;
+      player->health ++;
     }
-    sc_setHealth(player_data[i].client_fd, player_data[i].health, player_data[i].hunger, player_data[i].saturation);
+    sc_setHealth(player->client_fd, player->health, player->hunger, player->saturation);
   }
 
   // Write player data to file (if applicable)
@@ -1466,14 +1470,12 @@ void handleServerTick (int64_t time_since_last_tick) {
 
     uint32_t r = fast_rand();
 
-    if ((unsigned int)TICKS_PER_SECOND >= 1) {
-      if (passive) {
-        // Update passive mobs once per 4 seconds on average
-        if (r % (4 * (unsigned int)TICKS_PER_SECOND)) continue;
-      } else {
-        // Update hostile mobs once per second on average
-        if (r % (unsigned int)TICKS_PER_SECOND) continue;
-      }
+    if (passive) {
+      // Update passive mobs once per 4 seconds on average
+      if (r % (4 * (unsigned int)TICKS_PER_SECOND) != 0) continue;
+    } else {
+      // Update hostile mobs once per second
+      if (server_ticks % (uint32_t)TICKS_PER_SECOND != 0) continue;
     }
 
     // Find the player closest to this mob
