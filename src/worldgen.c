@@ -270,25 +270,38 @@ skip_feature:
     int8_t gap = height - TERRAIN_BASE_HEIGHT;
     if (y < CAVE_BASE_DEPTH + gap && y > CAVE_BASE_DEPTH - gap) return B_air;
 
-    // The chunk-relative X and Z coordinates are used in a bit shift on the hash
-    // The sum of these is then used to get the Y coordinate of the ore in this column
-    // This way, each column is guaranteed to have exactly one ore candidate
-    uint8_t ore_x_component = (anchor.hash >> rx) & 31;
-    uint8_t ore_z_component = (anchor.hash >> (rz + 16)) & 31;
-    uint8_t ore_y = ore_x_component + ore_z_component;
+    // The chunk-relative X and Z coordinates are used as the seed for an
+    // xorshift RNG/hash function to generate the Y coordinate of the ore
+    // in this column. This way, each column is guaranteed to have exactly
+    // one ore candidate, as there will always be a Y value to reference.
+    uint8_t ore_y = ((rx & 15) << 4) + (rz & 15);
+    ore_y ^= ore_y << 4;
+    ore_y ^= ore_y >> 5;
+    ore_y ^= ore_y << 1;
+    ore_y &= 63;
 
     if (y == ore_y) {
-      // Since the ore Y coordinate is effectely a random number in range [0;64],
-      // we use it in another bit shift to get a pseudo-random number for the column
-      uint8_t ore_probability = (anchor.hash >> ore_y) & 255;
+      // Since the ore Y coordinate is effectely a random number in range [0;64),
+      // we use it in a bit shift with the chunk's anchor hash to get another
+      // pseudo-random number for the ore's rarity.
+      uint8_t ore_probability = (anchor.hash >> (ore_y % 24)) & 255;
       // Ore placement is determined by Y level and "probability"
-      if (y < 15 && ore_probability < 15) return B_diamond_ore;
-      if (y < 30) {
-        if (ore_probability < 5) return B_gold_ore;
-        if (ore_probability < 20) return B_redstone_ore;
+      if (y < 15) {
+        if (ore_probability < 10) return B_diamond_ore;
+        if (ore_probability < 12) return B_gold_ore;
+        if (ore_probability < 15) return B_redstone_ore;
       }
-      if (y < 54 && ore_probability < 50) return B_iron_ore;
+      if (y < 30) {
+        if (ore_probability < 3) return B_gold_ore;
+        if (ore_probability < 8) return B_redstone_ore;
+      }
+      if (y < 54) {
+        if (ore_probability < 30) return B_iron_ore;
+        if (ore_probability < 40) return B_copper_ore;
+      }
       if (ore_probability < 60) return B_coal_ore;
+      if (y < 5) return B_lava;
+      return B_cobblestone;
     }
 
     // For everything else, fall back to stone
@@ -362,6 +375,8 @@ uint8_t getTerrainAt (int x, int y, int z, ChunkAnchor anchor) {
 }
 
 uint8_t getBlockAt (int x, int y, int z) {
+
+  if (y < 0) return B_bedrock;
 
   uint8_t block_change = getBlockChange(x, y, z);
   if (block_change != 0xFF) return block_change;

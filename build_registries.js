@@ -11,6 +11,7 @@ const blockToItemOverrides = {
   "redstone_ore": "redstone",
   "iron_ore": "raw_iron",
   "coal_ore": "coal",
+  "copper_ore": "raw_copper",
   "snow": "snowball",
   "dead_bush": "stick"
 };
@@ -47,6 +48,9 @@ const blockWhitelist = [
   "water_6",
   "water_7",
   "lava",
+  "lava_2",
+  "lava_4",
+  "lava_6",
   "snowy_grass_block",
   "mud",
   "moss_carpet",
@@ -54,7 +58,9 @@ const blockWhitelist = [
   "stone_slab",
   "cobblestone_slab",
   "composter",
-  "coal_block"
+  "coal_block",
+  "copper_ore",
+  "copper_block"
 ];
 
 // Currently, only 4 biome types are supported, excluding "beach"
@@ -346,7 +352,8 @@ async function convert () {
   const tagBuffer = serializeTags({
     "fluid": {
       // Water and lava, both flowing and still states
-      "water": [ 1, 2, 3, 4 ]
+      "water": [ 1, 2 ],
+      "lava": [ 3, 4 ]
     },
     "block": {
       "mineable/pickaxe": [
@@ -362,12 +369,14 @@ async function convert () {
         itemsAndBlocks.blockRegistry["redstone_ore"],
         itemsAndBlocks.blockRegistry["iron_ore"],
         itemsAndBlocks.blockRegistry["coal_ore"],
+        itemsAndBlocks.blockRegistry["copper_ore"],
         itemsAndBlocks.blockRegistry["furnace"],
         itemsAndBlocks.blockRegistry["iron_block"],
         itemsAndBlocks.blockRegistry["gold_block"],
         itemsAndBlocks.blockRegistry["diamond_block"],
         itemsAndBlocks.blockRegistry["redstone_block"],
-        itemsAndBlocks.blockRegistry["coal_block"]
+        itemsAndBlocks.blockRegistry["coal_block"],
+        itemsAndBlocks.blockRegistry["copper_block"]
       ],
       "mineable/axe": [
         itemsAndBlocks.blockRegistry["oak_log"],

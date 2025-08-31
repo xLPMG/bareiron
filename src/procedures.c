@@ -622,7 +622,8 @@ uint8_t isColumnBlock (uint8_t block) {
 uint8_t isPassableBlock (uint8_t block) {
   return (
     block == B_air ||
-    block == B_water ||
+    (block >= B_water && block < B_water + 8) ||
+    (block >= B_lava && block < B_lava + 4) ||
     block == B_snow ||
     block == B_moss_carpet ||
     block == B_short_grass ||
@@ -636,6 +637,7 @@ uint8_t isReplaceableBlock (uint8_t block) {
   return (
     block == B_air ||
     (block >= B_water && block < B_water + 8) ||
+    (block >= B_lava && block < B_lava + 4) ||
     block == B_short_grass ||
     block == B_snow
   );
@@ -869,7 +871,7 @@ void handleFluidMovement (short x, uint8_t y, short z, uint8_t fluid, uint8_t bl
   // a higher fluid "level" means the fluid has traveled farther
   uint8_t level = block - fluid;
 
-  // Query blocks adjacent to this water stream
+  // Query blocks adjacent to this fluid stream
   uint8_t adjacent[4] = {
     getBlockAt(x + 1, y, z),
     getBlockAt(x - 1, y, z),
@@ -877,7 +879,7 @@ void handleFluidMovement (short x, uint8_t y, short z, uint8_t fluid, uint8_t bl
     getBlockAt(x, y, z - 1)
   };
 
-  // Handle maintaining connections to a water source
+  // Handle maintaining connections to a fluid source
   if (level != 0) {
     // Check if this fluid is connected to a block exactly one level lower
     uint8_t connected = false;
@@ -906,6 +908,7 @@ void handleFluidMovement (short x, uint8_t y, short z, uint8_t fluid, uint8_t bl
   }
 
   // Stop flowing laterally at the maximum level
+  if (level == 3 && fluid == B_lava) return;
   if (level == 7) return;
 
   // Handle lateral water flow, increasing level by 1
@@ -932,7 +935,7 @@ void checkFluidUpdate (short x, uint8_t y, short z, uint8_t block) {
 
   uint8_t fluid;
   if (block >= B_water && block < B_water + 8) fluid = B_water;
-  // else if (block >= B_lava && block < B_lava + 8) fluid = B_lava;
+  else if (block >= B_lava && block < B_lava + 4) fluid = B_lava;
   else return;
 
   handleFluidMovement(x, y, z, fluid, block);
@@ -1303,6 +1306,10 @@ void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t da
         // Killed by a less than 5 block fall
         strcpy((char *)recv_buffer + player_name_len, " hit the ground too hard");
         recv_buffer[player_name_len + 24] = '\0';
+      } else if (damage_type == D_lava) {
+        // Killed by being in lava
+        strcpy((char *)recv_buffer + player_name_len, " tried to swim in lava");
+        recv_buffer[player_name_len + 22] = '\0';
       } else if (attacker_id < -1) {
         // Killed by a mob
         strcpy((char *)recv_buffer + player_name_len, " was slain by a mob");
@@ -1314,6 +1321,10 @@ void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t da
         strcpy((char *)recv_buffer + player_name_len, " was slain by ");
         strcpy((char *)recv_buffer + player_name_len + 14, attacker->name);
         recv_buffer[player_name_len + 14 + strlen(attacker->name)] = '\0';
+      } else {
+        // Unknown death reason
+        strcpy((char *)recv_buffer + player_name_len, " died");
+        recv_buffer[player_name_len + 4] = '\0';
       }
 
     } else player->health -= effective_damage;
@@ -1386,31 +1397,37 @@ void handleServerTick (int64_t time_since_last_tick) {
     if (player->flags & 0x20) { // Check "client loading" flag
       // If 3 seconds (60 vanilla ticks) have passed, assume player has loaded
       player->flagval_16 ++;
-      if (player->flagval_16 > (unsigned int)(3 * TICKS_PER_SECOND)) {
+      if (player->flagval_16 > (uint16_t)(3 * TICKS_PER_SECOND)) {
         player->flags &= ~0x20;
         player->flagval_16 = 0;
       } else continue;
     }
-    // Send Keep Alive and Update Time packets
-    sc_keepAlive(player->client_fd);
-    sc_updateTime(player->client_fd, world_time);
     // Reset player attack cooldown
     if (player->flags & 0x01) {
-      if (player->flagval_8 >= (unsigned int)(0.6f * TICKS_PER_SECOND)) {
+      if (player->flagval_8 >= (uint8_t)(0.6f * TICKS_PER_SECOND)) {
         player->flags &= ~0x01;
         player->flagval_8 = 0;
       } else player->flagval_8 ++;
     }
     // Handle eating animation
     if (player->flags & 0x10) {
-      if (player->flagval_16 >= (unsigned int)(1.6f * TICKS_PER_SECOND)) {
+      if (player->flagval_16 >= (uint16_t)(1.6f * TICKS_PER_SECOND)) {
         handlePlayerEating(&player_data[i], false);
         player->flags &= ~0x10;
         player->flagval_16 = 0;
       } else player->flagval_16 ++;
     }
-    // Heal from saturation if player is able and has enough food
+    // Below this, process events that happen once per second
     if (server_ticks % (uint32_t)TICKS_PER_SECOND != 0) continue;
+    // Send Keep Alive and Update Time packets
+    sc_keepAlive(player->client_fd);
+    sc_updateTime(player->client_fd, world_time);
+    // Tick damage from lava
+    uint8_t block = getBlockAt(player->x, player->y, player->z);
+    if (block >= B_lava && block < B_lava + 4) {
+      hurtEntity(player->client_fd, -1, D_lava, 8);
+    }
+    // Heal from saturation if player is able and has enough food
     if (player->health >= 20 || player->health == 0) continue;
     if (player->hunger < 18) continue;
     if (player->saturation >= 600) {
@@ -1438,6 +1455,7 @@ void handleServerTick (int64_t time_since_last_tick) {
   // Tick mob behavior
   for (int i = 0; i < MAX_MOBS; i ++) {
     if (mob_data[i].type == 0) continue;
+    int entity_id = -2 - i;
 
     // Handle deallocation on mob death
     if ((mob_data[i].data & 31) == 0) {
@@ -1449,9 +1467,9 @@ void handleServerTick (int64_t time_since_last_tick) {
       for (int j = 0; j < MAX_PLAYERS; j ++) {
         if (player_data[j].client_fd == -1) continue;
         // Spawn death smoke particles
-        sc_entityEvent(player_data[j].client_fd, -2 - i, 60);
+        sc_entityEvent(player_data[j].client_fd, entity_id, 60);
         // Remove the entity from the client
-        sc_removeEntity(player_data[j].client_fd, -2 - i);
+        sc_removeEntity(player_data[j].client_fd, entity_id);
       }
       continue;
     }
@@ -1465,7 +1483,7 @@ void handleServerTick (int64_t time_since_last_tick) {
 
     // Burn hostile mobs if above ground during sunlight
     if (!passive && (world_time < 13000 || world_time > 23460) && mob_data[i].y > 48) {
-      hurtEntity(-2 - i, -1, D_on_fire, 2);
+      hurtEntity(entity_id, -1, D_on_fire, 2);
     }
 
     uint32_t r = fast_rand();
@@ -1518,7 +1536,7 @@ void handleServerTick (int64_t time_since_last_tick) {
 
       // If we're already next to the player, hurt them and skip movement
       if (closest_dist < 3 && abs(mob_data[i].y - closest_player->y) < 2) {
-        hurtEntity(closest_player->client_fd, -2 - i, D_generic, 6);
+        hurtEntity(closest_player->client_fd, entity_id, D_generic, 6);
         continue;
       }
 
@@ -1557,8 +1575,13 @@ void handleServerTick (int64_t time_since_last_tick) {
       else continue;
     } else {
       uint8_t block_below = getBlockAt(new_x, new_y - 1, new_z);
-      if (isPassableBlock(block_below)) new_y -= 1;
+      if (isPassableBlock(block_below) && block != B_water) new_y -= 1;
     }
+
+    if ( // Hurt mobs that stumble into lava
+      (block >= B_lava && block < B_lava + 4) ||
+      (block_above >= B_lava && block_above < B_lava + 4)
+    ) hurtEntity(entity_id, -1, D_lava, 8);
 
     // Store new mob position
     mob_data[i].x = new_x;
@@ -1568,7 +1591,6 @@ void handleServerTick (int64_t time_since_last_tick) {
     // Broadcast relevant entity movement packets
     for (int j = 0; j < MAX_PLAYERS; j ++) {
       if (player_data[j].client_fd == -1) continue;
-      int entity_id = -2 - i;
       sc_teleportEntity (
         player_data[j].client_fd, entity_id,
         (double)new_x + 0.5, new_y, (double)new_z + 0.5,
