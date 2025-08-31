@@ -163,7 +163,7 @@ uint8_t serverSlotToClientSlot (int window_id, uint8_t slot) {
     if (slot < 9) return slot + 36;
     if (slot >= 9 && slot <= 35) return slot;
     if (slot == 40) return 45;
-    if (slot >= 36 && slot <= 39) return 3 - (slot - 36) + 5;
+    if (slot >= 36 && slot <= 39) return 44 - slot;
     if (slot >= 41 && slot <= 44) return slot - 40;
 
   } else if (window_id == 12) { // crafting table
@@ -188,7 +188,7 @@ uint8_t clientSlotToServerSlot (int window_id, uint8_t slot) {
     if (slot >= 36 && slot <= 44) return slot - 36;
     if (slot >= 9 && slot <= 35) return slot;
     if (slot == 45) return 40;
-    if (slot >= 5 && slot <= 8) return 4 - (slot - 5) + 36;
+    if (slot >= 5 && slot <= 8) return 44 - slot;
 
     // map inventory crafting slots to player data crafting grid (semi-hack)
     // this abuses the fact that the buffers are adjacent in player data
@@ -726,6 +726,86 @@ uint8_t getItemStackSize (uint16_t item) {
   return 64;
 }
 
+// Returns defense points for the given piece of armor
+// If the input item is not armor, returns 0
+uint8_t getItemDefensePoints (uint16_t item) {
+
+  switch (item) {
+    case I_leather_helmet: return 1;
+    case I_golden_helmet: return 2;
+    case I_iron_helmet: return 2;
+    case I_diamond_helmet: // Same as netherite
+    case I_netherite_helmet: return 3;
+    case I_leather_chestplate: return 3;
+    case I_golden_chestplate: return 5;
+    case I_iron_chestplate: return 6;
+    case I_diamond_chestplate: // Same as netherite
+    case I_netherite_chestplate: return 8;
+    case I_leather_leggings: return 2;
+    case I_golden_leggings: return 3;
+    case I_iron_leggings: return 5;
+    case I_diamond_leggings: // Same as netherite
+    case I_netherite_leggings: return 6;
+    case I_leather_boots: return 1;
+    case I_golden_boots: return 1;
+    case I_iron_boots: return 2;
+    case I_diamond_boots: // Same as netherite
+    case I_netherite_boots: return 3;
+    default: break;
+  }
+
+  return 0;
+}
+
+// Calculates total defense points for the player's equipped armor
+uint8_t getPlayerDefensePoints (PlayerData *player) {
+  return (
+    // Helmet
+    getItemDefensePoints(player->inventory_items[39]) +
+    // Chestplate
+    getItemDefensePoints(player->inventory_items[38]) +
+    // Leggings
+    getItemDefensePoints(player->inventory_items[37]) +
+    // Boots
+    getItemDefensePoints(player->inventory_items[36])
+  );
+}
+
+// Returns the designated server slot for the given piece of armor
+// If input item is not armor, returns 255
+uint8_t getArmorItemSlot (uint16_t item) {
+
+    switch (item) {
+    case I_leather_helmet:
+    case I_golden_helmet:
+    case I_iron_helmet:
+    case I_diamond_helmet:
+    case I_netherite_helmet:
+      return 39;
+    case I_leather_chestplate:
+    case I_golden_chestplate:
+    case I_iron_chestplate:
+    case I_diamond_chestplate:
+    case I_netherite_chestplate:
+      return 38;
+    case I_leather_leggings:
+    case I_golden_leggings:
+    case I_iron_leggings:
+    case I_diamond_leggings:
+    case I_netherite_leggings:
+      return 37;
+    case I_leather_boots:
+    case I_golden_boots:
+    case I_iron_boots:
+    case I_diamond_boots:
+    case I_netherite_boots:
+      return 36;
+    default: break;
+  }
+
+  return 255;
+}
+
 // Handles the player eating their currently held item
 // Returns whether the operation was succesful (item was consumed)
 // If `just_check` is set to true, the item doesn't get consumed
@@ -1058,6 +1138,21 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
     // Reset eating timer and set eating flag
     player->flagval_16 = 0;
     player->flags |= 0x10;
+  } else if (getItemDefensePoints(*item) != 0) {
+    // For some reason, this action is sent twice when looking at a block
+    // Ignore the variant that has coordinates
+    if (face == 255) return;
+    // Swap to held piece of armor
+    uint8_t slot = getArmorItemSlot(*item);
+    uint16_t prev_item = player->inventory_items[slot];
+    player->inventory_items[slot] = *item;
+    player->inventory_count[slot] = 1;
+    player->inventory_items[player->hotbar] = prev_item;
+    player->inventory_count[player->hotbar] = 1;
+    // Update client inventory
+    sc_setContainerSlot(player->client_fd, -2, serverSlotToClientSlot(0, slot), 1, *item);
+    sc_setContainerSlot(player->client_fd, -2, serverSlotToClientSlot(0, player->hotbar), 1, prev_item);
+    return;
   }
 
   // Don't proceed with block placement if no coordinates were provided
@@ -1182,8 +1277,16 @@ void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t da
     // Don't continue if the player is already dead
     if (player->health == 0) return;
 
+    // Calculate damage reduction from player's armor
+    uint8_t defense = getPlayerDefensePoints(player);
+    // This uses the old (pre-1.9) protection calculation. Factors are
+    // scaled up 256 times to avoid floating point math. Due to lost
+    // precision, the 4% reduction factor drops to ~3.9%, although the
+    // the resulting effective damage is then also rounded down.
+    uint8_t effective_damage = damage * (256 - defense * 10) / 256;
+
     // Process health change on the server
-    if (player->health <= damage) {
+    if (player->health <= effective_damage) {
 
       player->health = 0;
       entity_died = true;
@@ -1213,7 +1316,7 @@ void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t da
         recv_buffer[player_name_len + 14 + strlen(attacker->name)] = '\0';
       }
 
-    } else player->health -= damage;
+    } else player->health -= effective_damage;
 
     // Update health on the client
     sc_setHealth(entity_id, player->health, player->hunger, player->saturation);

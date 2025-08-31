@@ -182,6 +182,27 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
             return;
           }
           break;
+        // Boot recipes
+        case I_leather:
+        case I_iron_ingot:
+        case I_gold_ingot:
+        case I_diamond:
+        case I_netherite_ingot:
+          if (
+            first_col == 0 && first_row < 2 &&
+            player->craft_items[first + 2] == first_item &&
+            player->craft_items[first + 3] == first_item &&
+            player->craft_items[first + 5] == first_item
+          ) {
+            if (first_item == I_leather) *item = I_leather_boots;
+            else if (first_item == I_iron_ingot) *item = I_iron_boots;
+            else if (first_item == I_gold_ingot) *item = I_golden_boots;
+            else if (first_item == I_diamond) *item = I_diamond_boots;
+            else if (first_item == I_netherite_ingot) *item = I_netherite_boots;
+            *count = 1;
+            return;
+          }
+          break;
 
         default: break;
       }
@@ -235,6 +256,27 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
             *count = 1;
             return;
           }
+          if (
+            first_item == I_oak_planks ||
+            first_item == I_cobblestone
+          ) break;
+        case I_leather:
+          // Helmet recipes
+          if (
+            first_col == 0 && first_row < 2 &&
+            player->craft_items[first + 1] == first_item &&
+            player->craft_items[first + 2] == first_item &&
+            player->craft_items[first + 3] == first_item &&
+            player->craft_items[first + 5] == first_item
+          ) {
+            if (first_item == I_leather) *item = I_leather_helmet;
+            else if (first_item == I_iron_ingot) *item = I_iron_helmet;
+            else if (first_item == I_gold_ingot) *item = I_golden_helmet;
+            else if (first_item == I_diamond) *item = I_diamond_helmet;
+            else if (first_item == I_netherite_ingot) *item = I_netherite_helmet;
+            *count = 1;
+            return;
+          }
           break;
 
         default: break;
@@ -242,6 +284,17 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
       break;
 
     case 7:
+      // Legging recipes
+      if (identical && player->craft_items[4] == 0 && player->craft_items[7] == 0) {
+        switch (first_item) {
+          case I_leather: *item = I_leather_leggings; *count = 1; return;
+          case I_iron_ingot: *item = I_iron_leggings; *count = 1; return;
+          case I_gold_ingot: *item = I_golden_leggings; *count = 1; return;
+          case I_diamond: *item = I_diamond_leggings; *count = 1; return;
+          case I_netherite_ingot: *item = I_netherite_leggings; *count = 1; return;
+          default: break;
+        }
+      }
       switch (first_item) {
         case I_oak_slab:
           if (
@@ -260,13 +313,26 @@ void getCraftingOutput (PlayerData *player, uint8_t *count, uint16_t *item) {
       break;
 
     case 8:
-      if (identical && player->craft_items[first + 4] == 0) {
-        switch (first_item) {
-          case I_cobblestone: *item = I_furnace; *count = 1; return;
-          #ifdef ALLOW_CHESTS
-          case I_oak_planks: *item = I_chest; *count = 1; return;
-          #endif
-          default: break;
+      if (identical) {
+        if (player->craft_items[4] == 0) {
+          // Center slot clear
+          switch (first_item) {
+            case I_cobblestone: *item = I_furnace; *count = 1; return;
+            #ifdef ALLOW_CHESTS
+            case I_oak_planks: *item = I_chest; *count = 1; return;
+            #endif
+            default: break;
+          }
+        } else if (player->craft_items[1] == 0) {
+          // Top-middle slot clear (chestplate recipes)
+          switch (first_item) {
+            case I_leather: *item = I_leather_chestplate; *count = 1; return;
+            case I_iron_ingot: *item = I_iron_chestplate; *count = 1; return;
+            case I_gold_ingot: *item = I_golden_chestplate; *count = 1; return;
+            case I_diamond: *item = I_diamond_chestplate; *count = 1; return;
+            case I_netherite_ingot: *item = I_netherite_chestplate; *count = 1; return;
+            default: break;
+          }
         }
       }
       break;
