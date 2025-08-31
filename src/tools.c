@@ -115,7 +115,7 @@ ssize_t send_all (int client_fd, const void *buf, ssize_t len) {
     return -1; // real error
   }
 
-  return 0;
+  return sent;
 }
 
 ssize_t writeByte (int client_fd, uint8_t byte) {
