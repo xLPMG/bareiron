@@ -558,6 +558,8 @@ int main () {
       continue;
     }
 
+    // Handle 0xBEEF and 0xFEED packets for dumping/uploading world data
+    #ifdef DEV_ENABLE_BEEF_DUMPS
     // Received BEEF packet, dump world data and disconnect
     if (recv_buffer[0] == 0xBE && recv_buffer[1] == 0xEF && getClientState(client_fd) == STATE_NONE) {
       // Send block changes and player data back to back
@@ -571,7 +573,6 @@ int main () {
       disconnectClient(&clients[client_index], 6);
       continue;
     }
-
     // Received FEED packet, load world data from socket and disconnect
     if (recv_buffer[0] == 0xFE && recv_buffer[1] == 0xED && getClientState(client_fd) == STATE_NONE) {
       // Consume 0xFEED bytes (previous read was just a peek)
@@ -592,6 +593,7 @@ int main () {
       disconnectClient(&clients[client_index], 7);
       continue;
     }
+    #endif
 
     // Read packet length
     int length = readVarInt(client_fd);
