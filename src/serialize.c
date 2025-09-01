@@ -115,6 +115,12 @@ int initSerializer () {
 // Writes a range of block change entries to disk
 void writeBlockChangesToDisk (int from, int to) {
 
+  #ifdef DISK_SYNC_BLOCKS_ON_INTERVAL
+    // Skip this write if enough time hasn't passed since the last one
+    if (get_program_time() - last_disk_sync_time < DISK_SYNC_INTERVAL) return;
+    last_disk_sync_time = get_program_time();
+  #endif
+
   // Try to open the file in rw (without overwriting)
   FILE *file = fopen(FILE_PATH, "r+b");
   if (!file) {

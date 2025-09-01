@@ -412,7 +412,9 @@ uint8_t makeBlockChange (short x, uint8_t y, short z, uint8_t block) {
       #endif
       if (is_base_block) block_changes[i].block = 0xFF;
       else block_changes[i].block = block;
+      #ifndef DISK_SYNC_BLOCKS_ON_INTERVAL
       writeBlockChangesToDisk(i, i);
+      #endif
       return 0;
     }
   }
@@ -450,7 +452,9 @@ uint8_t makeBlockChange (short x, uint8_t y, short z, uint8_t block) {
         block_changes_count = i + 1;
       }
       // Write changes to disk (if applicable)
+      #ifndef DISK_SYNC_BLOCKS_ON_INTERVAL
       writeBlockChangesToDisk(last_real_entry + 1, last_real_entry + 15);
+      #endif
       return 0;
     }
     // If we're here, no changes were made
@@ -471,7 +475,9 @@ uint8_t makeBlockChange (short x, uint8_t y, short z, uint8_t block) {
   block_changes[first_gap].z = z;
   block_changes[first_gap].block = block;
   // Write change to disk (if applicable)
+  #ifndef DISK_SYNC_BLOCKS_ON_INTERVAL
   writeBlockChangesToDisk(first_gap, first_gap);
+  #endif
   // Extend future search range if we've appended to the end
   if (first_gap == block_changes_count) {
     block_changes_count ++;
@@ -1441,8 +1447,11 @@ void handleServerTick (int64_t time_since_last_tick) {
     sc_setHealth(player->client_fd, player->health, player->hunger, player->saturation);
   }
 
-  // Write player data to file (if applicable)
+  // Write data to file (if applicable)
   writePlayerDataToDisk();
+  #ifdef DISK_SYNC_BLOCKS_ON_INTERVAL
+  writeBlockChangesToDisk(0, block_changes_count);
+  #endif
 
   /**
    * If the RNG seed ever hits 0, it'll never generate anything
@@ -1618,7 +1627,9 @@ void broadcastChestUpdate (int origin_fd, uint8_t *storage_ptr, uint16_t item, u
     sc_setContainerSlot(player_data[i].client_fd, 2, slot, count, item);
   }
 
+  #ifndef DISK_SYNC_BLOCKS_ON_INTERVAL
   writeChestChangesToDisk(storage_ptr, slot);
+  #endif
 
 }
 #endif
