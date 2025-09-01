@@ -1086,13 +1086,14 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
     #ifdef ALLOW_CHESTS
     else if (target == B_chest) {
       // Get a pointer to the entry following this chest in block_changes
-      uint8_t *storage_ptr;
+      uint8_t *storage_ptr = NULL;
       for (int i = 0; i < block_changes_count; i ++) {
         if (block_changes[i].block != B_chest) continue;
         if (block_changes[i].x != x || block_changes[i].y != y || block_changes[i].z != z) continue;
         storage_ptr = (uint8_t *)(&block_changes[i + 1]);
         break;
       }
+      if (storage_ptr == NULL) return;
       // Terrible memory hack!!
       // Copy the pointer into the player's crafting table item array.
       // This allows us to save some memory by repurposing a feature that
@@ -1497,7 +1498,7 @@ void handleServerTick (int64_t time_since_last_tick) {
     }
 
     // Find the player closest to this mob
-    PlayerData* closest_player;
+    PlayerData* closest_player = &player_data[0];
     uint32_t closest_dist = 2147483647;
     for (int j = 0; j < MAX_PLAYERS; j ++) {
       if (player_data[j].client_fd == -1) continue;
