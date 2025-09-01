@@ -585,6 +585,9 @@ int main () {
         if (block_changes[i].block == B_chest) i += 14;
         if (i >= block_changes_count) block_changes_count = i + 1;
       }
+      // Update data on disk
+      writeBlockChangesToDisk(0, block_changes_count);
+      writePlayerDataToDisk();
       // Kick the client
       disconnectClient(&clients[client_index], 7);
       continue;
