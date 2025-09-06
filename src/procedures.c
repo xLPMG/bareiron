@@ -1020,10 +1020,10 @@ void handlePlayerAction (PlayerData *player, int action, short x, short y, short
 
   // Don't continue if the block change failed
   if (makeBlockChange(x, y, z, 0)) return;
-  bumpToolDurability(player);
 
   uint16_t held_item = player->inventory_items[player->hotbar];
   uint16_t item = getMiningResult(held_item, block);
+  bumpToolDurability(player);
 
   if (item) {
     #ifdef ENABLE_PICKUP_ANIMATION
