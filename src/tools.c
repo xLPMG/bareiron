@@ -222,6 +222,10 @@ uint64_t splitmix64 (uint64_t state) {
 }
 
 #ifndef ESP_PLATFORM
+// Returns system time in microseconds.
+// On ESP-IDF, this is available in "esp_timer.h", and returns time *since
+// the start of the program*, and NOT wall clock time. To ensure
+// compatibility, this should only be used to measure time intervals.
 int64_t get_program_time () {
   struct timespec ts;
   clock_gettime(CLOCK_MONOTONIC, &ts);

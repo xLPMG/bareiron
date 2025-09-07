@@ -32,8 +32,34 @@
 #include "procedures.h"
 #include "serialize.h"
 
+/**
+ * Routes an incoming packet to its packet handler or procedure.
+ *
+ * Full disclosure, I think this whole thing is a bit of a mess.
+ * The packet handlers started out as having proper error checks and
+ * handling, but that turned out to be very tedious and space/time
+ * consuming, and didn't really help with resolving errors. Not to mention
+ * that all those checks likely compound into a non-negligible performance
+ * hit on embedded systems.
+ *
+ * I think the way forward would be to gut the return values of the packet
+ * handlers, as most of them only ever return 0, and others aren't checked
+ * here. The length discrepancy checks at the bottom already do a good job
+ * at preventing this from derailing completely in case of a bad packet,
+ * and I think leaning into those is fine.
+ *
+ * In other words, I think the sc_/cs_ handlers should be of type `void`,
+ * and should simply return early when there's a failure that prevents the
+ * server from handling a packet. Any data that's left unhandled/unread
+ * will be caught by the length discrepancy checks. That's more or less
+ * how it already works, just not explicitly.
+ *
+ * Why have I not done this yet? Well, I'm close to uploading the video,
+ * and I don't want to risk refactoring anything this close to release.
+ */
 void handlePacket (int client_fd, int length, int packet_id, int state) {
 
+  // Count the amount of bytes received to catch length discrepancies
   uint64_t bytes_received_start = total_bytes_received;
 
   switch (packet_id) {
@@ -448,24 +474,23 @@ int main () {
 
   // Hash the seeds to ensure they're random enough
   world_seed = splitmix64(world_seed);
-  printf("World seed: ");
+  printf("World seed (hashed): ");
   for (int i = 3; i >= 0; i --) printf("%X", (unsigned int)((world_seed >> (8 * i)) & 255));
 
   rng_seed = splitmix64(rng_seed);
-  printf("\nRNG seed: ");
+  printf("\nRNG seed (hashed): ");
   for (int i = 3; i >= 0; i --) printf("%X", (unsigned int)((rng_seed >> (8 * i)) & 255));
   printf("\n\n");
 
+  // Initialize block changes entries as unallocated
   for (int i = 0; i < MAX_BLOCK_CHANGES; i ++) {
     block_changes[i].block = 0xFF;
   }
 
+  // Start the disk/flash serializer (if applicable)
   if (initSerializer()) exit(EXIT_FAILURE);
 
-  int server_fd, opt = 1;
-  struct sockaddr_in server_addr, client_addr;
-  socklen_t addr_len = sizeof(client_addr);
-
+  // Initialize all file descriptor references to -1 (unallocated)
   int clients[MAX_PLAYERS], client_index = 0;
   for (int i = 0; i < MAX_PLAYERS; i ++) {
     clients[i] = -1;
@@ -473,7 +498,11 @@ int main () {
     player_data[i].client_fd = -1;
   }
 
-  // Create socket
+  // Create server TCP socket
+  int server_fd, opt = 1;
+  struct sockaddr_in server_addr, client_addr;
+  socklen_t addr_len = sizeof(client_addr);
+
   server_fd = socket(AF_INET, SOCK_STREAM, 0);
   if (server_fd == -1) {
     perror("socket failed");
@@ -504,11 +533,12 @@ int main () {
   }
   printf("Server listening on port %d...\n", PORT);
 
-  // Set non-blocking socket flag
+  // Make the socket non-blocking
+  // This is necessary to not starve the idle task during slow connections
   int flags = fcntl(server_fd, F_GETFL, 0);
   fcntl(server_fd, F_SETFL, flags | O_NONBLOCK);
 
-  // Track time of last server tick
+  // Track time of last server tick (in microseconds)
   int64_t last_tick_time = get_program_time();
 
   /**
