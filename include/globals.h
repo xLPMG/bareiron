@@ -40,6 +40,31 @@
 // Calculated from TIME_BETWEEN_TICKS
 #define TICKS_PER_SECOND ((float)1000000 / TIME_BETWEEN_TICKS)
 
+// Initial world generation seed, will be hashed on startup
+// Used in generating terrain and biomes
+#define INITIAL_WORLD_SEED 0xA103DE6C
+
+// Initial general RNG seed, will be hashed on startup
+// Used in random game events like item drops and mob behavior
+#define INITIAL_RNG_SEED 0xE2B9419
+
+// Size of each bilinearly interpolated area ("minichunk")
+// For best performance, CHUNK_SIZE should be a power of 2
+#define CHUNK_SIZE 8
+
+// Terrain low point - should start a bit below sea level for rivers/lakes
+#define TERRAIN_BASE_HEIGHT 60
+
+// Cave generation Y level
+#define CAVE_BASE_DEPTH 24
+
+// Size of every major biome in multiples of CHUNK_SIZE
+// For best performance, should also be a power of 2
+#define BIOME_SIZE (CHUNK_SIZE * 8)
+
+// Calculated from BIOME_SIZE
+#define BIOME_RADIUS (BIOME_SIZE / 2)
+
 // How many visited chunk coordinates to "remember"
 // The server will not re-send chunks that the player has recently been in
 #define VISITED_HISTORY 4

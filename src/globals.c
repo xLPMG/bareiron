@@ -26,8 +26,8 @@
 ssize_t recv_count;
 uint8_t recv_buffer[256] = {0};
 
-uint32_t world_seed = 0xA103DE6C;
-uint32_t rng_seed = 0xE2B9419;
+uint32_t world_seed = INITIAL_WORLD_SEED;
+uint32_t rng_seed = INITIAL_RNG_SEED;
 
 uint16_t world_time = 0;
 uint32_t server_ticks = 0;
