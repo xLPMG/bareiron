@@ -67,6 +67,7 @@
 
 // How many visited chunk coordinates to "remember"
 // The server will not re-send chunks that the player has recently been in
+// Must be at least 1, otherwise chunks will be sent on each position update
 #define VISITED_HISTORY 4
 
 // How many player-made block changes to allow
