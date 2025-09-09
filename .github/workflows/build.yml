@@ -54,8 +54,8 @@ jobs:
         with:
           tag_name: latest
           name: Latest build
+          body: "This is a rolling release of bareiron, compiled from the latest commit on the main branch.\n\nThe executable (`bareiron.exe`) is a Cosmopolitan-built polyglot, and should run on Windows and Linux (and Mac?), despite the file extension."
           files: bareiron.exe
-          overwrite: true
           prerelease: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
