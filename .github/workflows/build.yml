@@ -1,0 +1,36 @@
+name: Build with Cosmopolitan
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download cosmocc
+        run: |
+          curl -LO https://cosmo.zip/pub/cosmocc/cosmocc.zip
+          unzip cosmocc.zip -d cosmocc
+          echo "$PWD/cosmocc/bin" >> $GITHUB_PATH
+
+      - name: Build project
+        run: |
+          cosmocc src/*.c -O3 -Iinclude -o bareiron.exe
+
+      - name: Upload release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Latest build
+          files: bareiron.exe
+          overwrite: true
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

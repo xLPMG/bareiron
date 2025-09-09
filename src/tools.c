@@ -7,6 +7,7 @@
   #include "lwip/netdb.h"
   #include "esp_timer.h"
 #else
+  #include <sys/socket.h>
   #include <arpa/inet.h>
   #include <unistd.h>
   #include <time.h>
