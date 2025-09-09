@@ -25,13 +25,18 @@ jobs:
           unzip cosmocc.zip -d cosmocc
           echo "$PWD/cosmocc/bin" >> $GITHUB_PATH
 
+      - name: Install JDK 24
+        run: |
+          curl -LO https://download.java.net/java/GA/jdk24.0.2/fdc5d0102fe0414db21410ad5834341f/12/GPL/openjdk-24.0.2_linux-x64_bin.tar.gz
+          tar -xzf openjdk-24.0.2_linux-x64_bin.tar.gz
+
       - name: Dump Minecraft server registries
         run: |
           mkdir notchian
           cd notchian
           curl -Lo server.jar https://piston-data.mojang.com/v1/objects/6bce4ef400e4efaa63a13d5e6f6b500be969ef81/server.jar
           echo "eula=true" > eula.txt
-          java -DbundlerMainClass="net.minecraft.data.Main" -jar server.jar
+          ../jdk-24.0.2/bin/java -DbundlerMainClass="net.minecraft.data.Main" -jar server.jar
 
       - name: Generate registry headers
         run: |
