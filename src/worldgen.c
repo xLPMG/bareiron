@@ -172,9 +172,7 @@ uint8_t getHeightAt (int x, int z) {
 
 uint8_t getTerrainAtFromCache (int x, int y, int z, int rx, int rz, ChunkAnchor anchor, ChunkFeature feature, uint8_t height) {
 
-  if (y < 64 || y < height) goto skip_feature;
-
-  switch (anchor.biome) {
+  if (y >= 64 && y >= height && feature.y != 255) switch (anchor.biome) {
     case W_plains: { // Generate trees in the plains biome
 
       // Don't generate trees underwater
@@ -250,7 +248,6 @@ uint8_t getTerrainAtFromCache (int x, int y, int z, int rx, int rz, ChunkAnchor 
     default: break;
   }
 
-skip_feature:
   // Handle surface-level terrain (the very topmost blocks)
   if (height >= 63) {
     if (y == height) {
