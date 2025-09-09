@@ -4,10 +4,16 @@ Minimalist Minecraft server for memory-restrictive embedded systems.
 The goal of this project is to enable hosting Minecraft servers on very weak devices, such as the ESP32. The project's priorities are, in order: **memory usage**, **performance**, and **features**. Because of this, compliance with vanilla Minecraft is not guaranteed, nor is it a goal of the project.
 
 ## Quick start
+For PC x86_64 platforms, grab the [latest build binary](https://github.com/p2r3/bareiron/releases/download/latest/bareiron.exe) and run it. The file is a [Cosmopolitan polyglot](https://github.com/jart/cosmopolitan), which means it'll run on Windows, Linux, and possibly Mac, despite the file extension.
+
+For microcontrollers, see the section on **compilation** below.
+
+## Compilation
 Before compiling, you'll need to dump registry data from a vanilla Minecraft server. Create a folder called `notchian` here, and put a Minecraft server JAR in it. Then, follow [this guide](https://minecraft.wiki/w/Minecraft_Wiki:Projects/wiki.vg_merge/Data_Generators) to dump all of the registries. Finally, run `build_registries.js` with `node`, `bun`, or `deno`.
 
 - To target Linux, install `gcc` and run `build.sh`
 - To target an ESP variant, set up a PlatformIO project and clone this repository on top of it.
+- There's currently no streamlined build process for Windows. Contributions in this area are welcome!
 
 ## Configuration
 Most user-friendly configuration options are available in `include/globals.h`, including WiFi credentials for embedded setups. Of course, many more things can be configured by editing the source code.
