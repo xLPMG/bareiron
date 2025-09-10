@@ -1151,7 +1151,7 @@ void handlePlayerUseItem (PlayerData *player, short x, short y, short z, uint8_t
   } else if (getItemDefensePoints(*item) != 0) {
     // For some reason, this action is sent twice when looking at a block
     // Ignore the variant that has coordinates
-    if (face == 255) return;
+    if (face != 255) return;
     // Swap to held piece of armor
     uint8_t slot = getArmorItemSlot(*item);
     uint16_t prev_item = player->inventory_items[slot];
