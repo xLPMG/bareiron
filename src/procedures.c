@@ -1424,6 +1424,11 @@ void handleServerTick (int64_t time_since_last_tick) {
         player->flagval_16 = 0;
       } else player->flagval_16 ++;
     }
+    // Reset movement update cooldown if not broadcasting every update
+    // Effectively ties player movement updates to the tickrate
+    #ifndef BROADCAST_ALL_MOVEMENT
+      player->flags &= ~0x40;
+    #endif
     // Below this, process events that happen once per second
     if (server_ticks % (uint32_t)TICKS_PER_SECOND != 0) continue;
     // Send Keep Alive and Update Time packets

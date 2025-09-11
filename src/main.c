@@ -233,17 +233,31 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
           player->pitch = pitch / 90.0f * 127.0f;
         }
 
-        // Broadcast player position to other players
+        // Whether to broadcast player position to other players
+        uint8_t should_broadcast = true;
+
+        #ifndef BROADCAST_ALL_MOVEMENT
+          // If applicable, tie movement updates to the tickrate by using
+          // a flag that gets reset on every tick. It might sound better
+          // to just make the tick handler broadcast position updates, but
+          // then we lose precision. While position is stored using integers,
+          // here the client gives us doubles and floats directly.
+          should_broadcast = !(player->flags & 0x40);
+          if (should_broadcast) player->flags |= 0x40;
+        #endif
+
         #ifdef SCALE_MOVEMENT_UPDATES_TO_PLAYER_COUNT
           // If applicable, broadcast only every client_count-th movement update
-          uint8_t should_broadcast = false;
-          if (++player->packets_since_update >= client_count) {
-            should_broadcast = true;
+          if (++player->packets_since_update < client_count) {
+            should_broadcast = false;
+          } else {
+            // Note that this does not explicitly set should_broadcast to true
+            // This allows the above BROADCAST_ALL_MOVEMENT check to compound
+            // Whether that's ever favorable is up for debate
             player->packets_since_update = 0;
           }
-        #else
-          #define should_broadcast (client_count > 0)
         #endif
+
         if (should_broadcast) {
           // If the packet had no rotation data, calculate it from player data
           if (packet_id == 0x1D) {

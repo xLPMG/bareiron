@@ -102,9 +102,18 @@
 // clients from Keep Alive packets.
 #define NETWORK_TIMEOUT_TIME 15000000
 
+// If defined, rebroadcasts ALL incoming movement updates, disconnecting
+// movement from the server's tickrate. This makes movement much smoother
+// on very low tickrates, at the cost of potential network instability when
+// hosting more than just a couple of players. When disabling this on low
+// tickrates, consider disabling SCALE_MOVEMENT_UPDATES_TO_PLAYER_COUNT too.
+#define BROADCAST_ALL_MOVEMENT
+
 // If defined, scales the frequency at which player movement updates are
 // broadcast based on the amount of players, reducing overhead for higher
 // player counts. For very many players, makes movement look jittery.
+// It is not recommended to use this if BROADCAST_ALL_MOVEMENT is disabled
+// on low tickrates, as that might drastically decrease the update rate.
 #define SCALE_MOVEMENT_UPDATES_TO_PLAYER_COUNT
 
 // If defined, calculates fluid flow when blocks are updated near fluids
@@ -207,6 +216,7 @@ typedef struct {
   // 0x08 - sprinting
   // 0x10 - eating, makes flagval_16 act as eating timer
   // 0x20 - client loading, uses flagval_16 as fallback timer
+  // 0x40 - movement update cooldown
   uint8_t flags;
 } PlayerData;
 
