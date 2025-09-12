@@ -176,8 +176,8 @@ extern uint16_t client_count;
 
 typedef struct {
   short x;
-  uint8_t y;
   short z;
+  uint8_t y;
   uint8_t block;
 } BlockChange;
 
