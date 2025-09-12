@@ -427,13 +427,14 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
       if (state == STATE_PLAY) cs_playerInput(client_fd);
       break;
 
-    case 0x2B: // Player Loaded
+    case 0x2B: { // Player Loaded
       PlayerData *player;
       if (getPlayerData(client_fd, &player)) break;
       // Clear "client loading" flag and fallback timer
       player->flags &= ~0x20;
       player->flagval_16 = 0;
       break;
+    }
 
     case 0x34:
       if (state == STATE_PLAY) cs_setHeldItem(client_fd);
