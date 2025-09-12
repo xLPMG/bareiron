@@ -41,3 +41,4 @@ Alternatively, if you can't set up a file system, you can dump and upload world 
 ## Contribution
 - Create issues and discuss with the maintainer(s) before making pull requests.
 - Follow the existing code style. Ensure that your changes fit in with the surrounding code, even if you disagree with the style. Pull requests with inconsistent style will be nitpicked.
+- Test your code before creating a pull request or requesting a review, regardless of how "simple" your change is. It's a basic form of respect towards the maintainer and reviewer.
