@@ -19,7 +19,7 @@ Before compiling, you'll need to dump registry data from a vanilla Minecraft ser
 
 - To target Linux, install `gcc` and run `build.sh`
 - To target Windows, install `gcc` and run `build.bat`
-- To target an ESP variant, set up a PlatformIO project and clone this repository on top of it. See **Configuration** below for further steps.
+- To target an ESP variant, set up a PlatformIO project (select the ESP-IDF framework, **not Arduino**) and clone this repository on top of it. See **Configuration** below for further steps. For better performance, consider changing the clock speed and enabling compiler optimizations. If you don't know how to do this, there are plenty of resources online.
 
 ## Configuration
 Configuring the server requires compiling it from its source code as described in the section above.
