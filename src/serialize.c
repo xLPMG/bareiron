@@ -115,12 +115,6 @@ int initSerializer () {
 // Writes a range of block change entries to disk
 void writeBlockChangesToDisk (int from, int to) {
 
-  #ifdef DISK_SYNC_BLOCKS_ON_INTERVAL
-    // Skip this write if enough time hasn't passed since the last one
-    if (get_program_time() - last_disk_sync_time < DISK_SYNC_INTERVAL) return;
-    last_disk_sync_time = get_program_time();
-  #endif
-
   // Try to open the file in rw (without overwriting)
   FILE *file = fopen(FILE_PATH, "r+b");
   if (!file) {
@@ -149,10 +143,6 @@ void writeBlockChangesToDisk (int from, int to) {
 // Writes all player data to disk
 void writePlayerDataToDisk () {
 
-  // Skip this write if enough time hasn't passed since the last one
-  if (get_program_time() - last_disk_sync_time < DISK_SYNC_INTERVAL) return;
-  last_disk_sync_time = get_program_time();
-
   // Try to open the file in rw (without overwriting)
   FILE *file = fopen(FILE_PATH, "r+b");
   if (!file) {
@@ -174,6 +164,21 @@ void writePlayerDataToDisk () {
   }
 
   fclose(file);
+}
+
+// Writes data queued for interval writes, but only if enough time has passed
+void writeDataToDiskOnInterval () {
+
+  // Skip this write if enough time hasn't passed since the last one
+  if (get_program_time() - last_disk_sync_time < DISK_SYNC_INTERVAL) return;
+  last_disk_sync_time = get_program_time();
+
+  // Write full player data and block changes buffers
+  writePlayerDataToDisk();
+  #ifdef DISK_SYNC_BLOCKS_ON_INTERVAL
+  writeBlockChangesToDisk(0, block_changes_count);
+  #endif
+
 }
 
 #ifdef ALLOW_CHESTS

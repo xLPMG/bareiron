@@ -1483,11 +1483,8 @@ void handleServerTick (int64_t time_since_last_tick) {
     sc_setHealth(player->client_fd, player->health, player->hunger, player->saturation);
   }
 
-  // Write data to file (if applicable)
-  writePlayerDataToDisk();
-  #ifdef DISK_SYNC_BLOCKS_ON_INTERVAL
-  writeBlockChangesToDisk(0, block_changes_count);
-  #endif
+  // Perform regular checks for if it's time to write to disk
+  writeDataToDiskOnInterval();
 
   /**
    * If the RNG seed ever hits 0, it'll never generate anything
