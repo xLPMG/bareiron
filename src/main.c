@@ -85,6 +85,10 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
         if (cs_clientInformation(client_fd)) break;
         if (sc_knownPacks(client_fd)) break;
         if (sc_registries(client_fd)) break;
+
+        #ifdef SEND_BRAND
+        if (sc_sendPluginMessage(client_fd, "minecraft:brand", brand, brand_len)) break;
+        #endif
       }
       break;
 

@@ -157,6 +157,23 @@ int cs_pluginMessage (int client_fd) {
   return 0;
 }
 
+// S->C Clientbound Plugin Message
+int sc_sendPluginMessage (int client_fd, const char *channel, const uint8_t *data, size_t data_len) {
+  printf("Sending Plugin Message\n\n");
+  int channel_len = (int)strlen(channel);
+
+  writeVarInt(client_fd, 1 + sizeVarInt(channel_len) + channel_len + sizeVarInt(data_len) + data_len);
+  writeByte(client_fd, 0x01);
+
+  writeVarInt(client_fd, channel_len);
+  send_all(client_fd, channel, channel_len);
+
+  writeVarInt(client_fd, data_len);
+  send_all(client_fd, data, data_len);
+
+  return 0;
+}
+
 // S->C Finish Configuration
 int sc_finishConfiguration (int client_fd) {
   writeVarInt(client_fd, 1);
