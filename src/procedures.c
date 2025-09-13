@@ -146,6 +146,29 @@ void handlePlayerDisconnect (int client_fd) {
   }
 }
 
+// Marks a client as connected and broadcasts their data to other players
+void handlePlayerJoin (PlayerData* player) {
+
+  // Prepare join message for broadcast
+  uint8_t player_name_len = strlen(player->name);
+  strcpy((char *)recv_buffer, player->name);
+  strcpy((char *)recv_buffer + player_name_len, " joined the game");
+
+  // Inform other clients (and the joining client) of the player's name and entity
+  for (int i = 0; i < MAX_PLAYERS; i ++) {
+    sc_systemChat(player_data[i].client_fd, (char *)recv_buffer, 16 + player_name_len);
+    sc_playerInfoUpdateAddPlayer(player_data[i].client_fd, *player);
+    if (player_data[i].client_fd != player->client_fd) {
+      sc_spawnEntityPlayer(player_data[i].client_fd, *player);
+    }
+  }
+
+  // Clear "client loading" flag and fallback timer
+  player->flags &= ~0x20;
+  player->flagval_16 = 0;
+
+}
+
 void disconnectClient (int *client_fd, int cause) {
   if (*client_fd == -1) return;
   client_count --;
@@ -1414,8 +1437,7 @@ void handleServerTick (int64_t time_since_last_tick) {
       // If 3 seconds (60 vanilla ticks) have passed, assume player has loaded
       player->flagval_16 ++;
       if (player->flagval_16 > (uint16_t)(3 * TICKS_PER_SECOND)) {
-        player->flags &= ~0x20;
-        player->flagval_16 = 0;
+        handlePlayerJoin(player);
       } else continue;
     }
     // Reset player attack cooldown

@@ -1178,6 +1178,18 @@ int sc_pickupItem (int client_fd, int collected, int collector, uint8_t count) {
   return 0;
 }
 
+// C->S Player Loaded
+int cs_playerLoaded (int client_fd) {
+
+  PlayerData *player;
+  if (getPlayerData(client_fd, &player)) return 1;
+
+  // Redirect handling to player join procedure
+  handlePlayerJoin(player);
+
+  return 0;
+}
+
 // S->C Registry Data (multiple packets) and Update Tags (configuration, multiple packets)
 int sc_registries (int client_fd) {
 

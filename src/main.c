@@ -126,22 +126,13 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
         // Send full client spawn sequence
         spawnPlayer(player);
 
-        // Prepare join message for broadcast
-        uint8_t player_name_len = strlen(player->name);
-        strcpy((char *)recv_buffer, player->name);
-        strcpy((char *)recv_buffer + player_name_len, " joined the game");
-
-        // Register all existing players and spawn their entities, and broadcast
-        // information about the joining player to all existing players.
+        // Register all existing players and spawn their entities
         for (int i = 0; i < MAX_PLAYERS; i ++) {
           if (player_data[i].client_fd == -1) continue;
-          if (player_data[i].flags & 0x20 && player_data[i].client_fd != client_fd) continue;
+          // Note that this will also filter out the joining player
+          if (player_data[i].flags & 0x20) continue;
           sc_playerInfoUpdateAddPlayer(client_fd, player_data[i]);
-          sc_systemChat(player_data[i].client_fd, (char *)recv_buffer, 16 + player_name_len);
-          if (player_data[i].client_fd == client_fd) continue;
-          sc_playerInfoUpdateAddPlayer(player_data[i].client_fd, *player);
           sc_spawnEntityPlayer(client_fd, player_data[i]);
-          sc_spawnEntityPlayer(player_data[i].client_fd, *player);
         }
 
         // Send information about all other entities (mobs)
@@ -431,14 +422,9 @@ void handlePacket (int client_fd, int length, int packet_id, int state) {
       if (state == STATE_PLAY) cs_playerInput(client_fd);
       break;
 
-    case 0x2B: { // Player Loaded
-      PlayerData *player;
-      if (getPlayerData(client_fd, &player)) break;
-      // Clear "client loading" flag and fallback timer
-      player->flags &= ~0x20;
-      player->flagval_16 = 0;
+    case 0x2B:
+      if (state == STATE_PLAY) cs_playerLoaded(client_fd);
       break;
-    }
 
     case 0x34:
       if (state == STATE_PLAY) cs_setHeldItem(client_fd);
