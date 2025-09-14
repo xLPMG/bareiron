@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#ifdef _WIN32
+#include <winsock2.h>
+#endif
 
 #include "globals.h"
 #include "tools.h"
@@ -181,9 +184,14 @@ void disconnectClient (int *client_fd, int cause) {
   client_count --;
   setClientState(*client_fd, STATE_NONE);
   handlePlayerDisconnect(*client_fd);
+  #ifdef _WIN32
+  closesocket(*client_fd);
+  printf("Disconnected client %d, cause: %d, errno: %d\n", *client_fd, cause, WSAGetLastError());
+  #else
   close(*client_fd);
-  *client_fd = -1;
   printf("Disconnected client %d, cause: %d, errno: %d\n\n", *client_fd, cause, errno);
+  #endif
+  *client_fd = -1;
 }
 
 uint8_t serverSlotToClientSlot (int window_id, uint8_t slot) {
