@@ -1574,8 +1574,11 @@ void handleServerTick (int64_t time_since_last_tick) {
       continue;
     }
 
-    short new_x = mob_data[i].x, new_z = mob_data[i].z;
-    uint8_t new_y = mob_data[i].y, yaw = 0;
+    short old_x = mob_data[i].x, old_z = mob_data[i].z;
+    uint8_t old_y = mob_data[i].y;
+
+    short new_x = old_x, new_z = old_z;
+    uint8_t new_y = old_y, yaw = 0;
 
     if (passive) { // Passive mob movement handling
 
@@ -1592,48 +1595,99 @@ void handleServerTick (int64_t time_since_last_tick) {
     } else { // Hostile mob movement handling
 
       // If we're already next to the player, hurt them and skip movement
-      if (closest_dist < 3 && abs(mob_data[i].y - closest_player->y) < 2) {
+      if (closest_dist < 3 && abs(old_y - closest_player->y) < 2) {
         hurtEntity(closest_player->client_fd, entity_id, D_generic, 6);
         continue;
       }
 
       // Move towards the closest player on 8 axis
       // The condition nesting ensures a correct yaw at 45 degree turns
-      if (closest_player->x < mob_data[i].x) {
+      if (closest_player->x < old_x) {
         new_x -= 1; yaw = 64;
-        if (closest_player->z < mob_data[i].z) { new_z -= 1; yaw += 32; }
-        else if (closest_player->z > mob_data[i].z) { new_z += 1; yaw -= 32; }
+        if (closest_player->z < old_z) { new_z -= 1; yaw += 32; }
+        else if (closest_player->z > old_z) { new_z += 1; yaw -= 32; }
       }
-      else if (closest_player->x > mob_data[i].x) {
+      else if (closest_player->x > old_x) {
         new_x += 1; yaw = 192;
-        if (closest_player->z < mob_data[i].z) { new_z -= 1; yaw -= 32; }
-        else if (closest_player->z > mob_data[i].z) { new_z += 1; yaw += 32; }
+        if (closest_player->z < old_z) { new_z -= 1; yaw -= 32; }
+        else if (closest_player->z > old_z) { new_z += 1; yaw += 32; }
       } else {
-        if (closest_player->z < mob_data[i].z) { new_z -= 1; yaw = 128; }
-        else if (closest_player->z > mob_data[i].z) { new_z += 1; yaw = 0; }
+        if (closest_player->z < old_z) { new_z -= 1; yaw = 128; }
+        else if (closest_player->z > old_z) { new_z += 1; yaw = 0; }
       }
 
     }
 
-    // Vary the yaw angle to look just a little less robotic
-    yaw += ((r >> 7) & 31) - 16;
-
-    // Check if the blocks we're moving into are passable:
-    //   if yes, and the block below is solid, keep the same Y level;
-    //   if yes, but the block below isn't solid, drop down one block;
-    //   if not, go up by up to one block;
-    //   if going up isn't possible, skip this iteration.
+    // Holds the block that the mob is moving into
     uint8_t block = getBlockAt(new_x, new_y, new_z);
+    // Holds the block above the target block, i.e. the "head" block
     uint8_t block_above = getBlockAt(new_x, new_y + 1, new_z);
-    if (!isPassableBlock(block) || !isPassableBlock(block_above)) {
-      block = block_above;
-      block_above = getBlockAt(new_x, new_y + 2, new_z);
-      if (isPassableBlock(block) && isPassableBlock(block_above)) new_y += 1;
-      else continue;
-    } else {
-      uint8_t block_below = getBlockAt(new_x, new_y - 1, new_z);
-      if (isPassableBlock(block_below) && block != B_water) new_y -= 1;
+
+    if ( // Validate movement on X axis
+      new_x != old_x &&
+      !isPassableBlock(getBlockAt(new_x, new_y + 1, old_z)) ||
+      (
+        !isPassableBlock(getBlockAt(new_x, new_y, old_z)) &&
+        !isPassableBlock(getBlockAt(new_x, new_y + 2, old_z))
+      )
+    ) {
+      new_x = old_x;
+      block = getBlockAt(old_x, new_y, new_z);
+      block_above = getBlockAt(old_x, new_y + 1, new_z);
     }
+    if ( // Validate movement on Z axis
+      new_z != old_z &&
+      !isPassableBlock(getBlockAt(old_x, new_y + 1, new_z)) ||
+      (
+        !isPassableBlock(getBlockAt(old_x, new_y, new_z)) &&
+        !isPassableBlock(getBlockAt(old_x, new_y + 2, new_z))
+      )
+    ) {
+      new_z = old_z;
+      block = getBlockAt(new_x, new_y, old_z);
+      block_above = getBlockAt(new_x, new_y + 1, old_z);
+    }
+
+    if ( // Validate diagonal movement
+      new_x != old_x && new_z != old_z &&
+      !isPassableBlock(block_above) ||
+      (
+        !isPassableBlock(block) &&
+        !isPassableBlock(getBlockAt(new_x, new_y + 2, new_z))
+      )
+    ) {
+      // We know that movement along just one axis is fine thanks to the
+      // checks above, pick one based on proximity.
+      int dist_x = abs(old_x - closest_player->x);
+      int dist_z = abs(old_z - closest_player->z);
+      if (dist_x < dist_z) new_z = old_z;
+      else new_x = old_x;
+      block = getBlockAt(new_x, new_y, new_z);
+    }
+
+    // Check if we're supposed to climb/drop one block
+    // The checks above already ensure that there's enough space to climb
+    if (!isPassableBlock(block)) new_y += 1;
+    else if (isPassableBlock(getBlockAt(new_x, new_y - 1, new_z))) new_y -= 1;
+
+    // Exit early if all movement was cancelled
+    if (new_x == mob_data[i].x && new_z == old_z && new_y == old_y) continue;
+
+    // Prevent collisions with other mobs
+    uint8_t colliding = false;
+    for (int j = 0; j < MAX_MOBS; j ++) {
+      if (j == i) continue;
+      if (mob_data[j].type == 0) continue;
+      if (
+        mob_data[j].x == new_x &&
+        mob_data[j].z == new_z &&
+        abs((int)mob_data[j].y - (int)new_y) < 2
+      ) {
+        colliding = true;
+        break;
+      }
+    }
+    if (colliding) continue;
 
     if ( // Hurt mobs that stumble into lava
       (block >= B_lava && block < B_lava + 4) ||
@@ -1644,6 +1698,9 @@ void handleServerTick (int64_t time_since_last_tick) {
     mob_data[i].x = new_x;
     mob_data[i].y = new_y;
     mob_data[i].z = new_z;
+
+    // Vary the yaw angle to look just a little less robotic
+    yaw += ((r >> 7) & 31) - 16;
 
     // Broadcast relevant entity movement packets
     for (int j = 0; j < MAX_PLAYERS; j ++) {
