@@ -47,6 +47,7 @@ int getClientIndex (int client_fd) {
   return -1;
 }
 
+// Restores player data to initial state (fresh spawn)
 void resetPlayerData (PlayerData *player) {
   player->health = 20;
   player->hunger = 20;
@@ -66,16 +67,26 @@ void resetPlayerData (PlayerData *player) {
   }
 }
 
+// Assigns the given data to a player_data entry
 int reservePlayerData (int client_fd, uint8_t *uuid, char *name) {
 
   for (int i = 0; i < MAX_PLAYERS; i ++) {
+    // Found existing player entry (UUID match)
     if (memcmp(player_data[i].uuid, uuid, 16) == 0) {
+      // Set network file descriptor and username
       player_data[i].client_fd = client_fd;
+      memcpy(player_data[i].name, name, 16);
+      // Flag player as loading
       player_data[i].flags |= 0x20;
       player_data[i].flagval_16 = 0;
-      memcpy(player_data[i].name, name, 16);
+      // Reset their recently visited chunk list
+      for (int j = 0; j < VISITED_HISTORY; j ++) {
+        player_data[i].visited_x[j] = 32767;
+        player_data[i].visited_z[j] = 32767;
+      }
       return 0;
     }
+    // Search for unallocated player slots
     uint8_t empty = true;
     for (uint8_t j = 0; j < 16; j ++) {
       if (player_data[i].uuid[j] != 0) {
@@ -83,6 +94,7 @@ int reservePlayerData (int client_fd, uint8_t *uuid, char *name) {
         break;
       }
     }
+    // Found free space for a player, initialize default parameters
     if (empty) {
       if (player_data_count >= MAX_PLAYERS) return 1;
       player_data[i].client_fd = client_fd;
@@ -117,11 +129,6 @@ void handlePlayerDisconnect (int client_fd) {
     if (player_data[i].client_fd != client_fd) continue;
     // Mark the player as being offline
     player_data[i].client_fd = -1;
-    // Reset their recently visited chunk list
-    for (int j = 0; j < VISITED_HISTORY; j ++) {
-      player_data[i].visited_x[j] = 32767;
-      player_data[i].visited_z[j] = 32767;
-    }
     // Prepare leave message for broadcast
     uint8_t player_name_len = strlen(player_data[i].name);
     strcpy((char *)recv_buffer, player_data[i].name);
