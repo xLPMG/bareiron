@@ -1400,6 +1400,9 @@ void hurtEntity (int entity_id, int attacker_id, uint8_t damage_type, uint8_t da
     // Don't continue if the mob is already dead
     if (mob_health == 0) return;
 
+    // Set the mob's panic timer
+    mob->data |= (3 << 6);
+
     // Process health change on the server
     if (mob_health <= damage) {
 
@@ -1544,6 +1547,9 @@ void handleServerTick (int64_t time_since_last_tick) {
       mob_data[i].type == 95 || // Pig
       mob_data[i].type == 106 // Sheep
     );
+    // Mob "panic" timer, set to 3 after being hit
+    // Currently has no effect on hostile mobs
+    uint8_t panic = (mob_data[i].data >> 6) & 3;
 
     // Burn hostile mobs if above ground during sunlight
     if (!passive && (world_time < 13000 || world_time > 23460) && mob_data[i].y > 48) {
@@ -1553,8 +1559,21 @@ void handleServerTick (int64_t time_since_last_tick) {
     uint32_t r = fast_rand();
 
     if (passive) {
-      // Update passive mobs once per 4 seconds on average
-      if (r % (4 * (unsigned int)TICKS_PER_SECOND) != 0) continue;
+      if (panic) {
+        // If panicking, move randomly at up to 4 times per second
+        if (TICKS_PER_SECOND >= 4) {
+          uint32_t ticks_per_panic = (uint32_t)(TICKS_PER_SECOND / 4);
+          if (server_ticks % ticks_per_panic != 0) continue;
+        }
+        // Reset panic state after timer runs out
+        // Each panic timer tick takes one second
+        if (server_ticks % (uint32_t)TICKS_PER_SECOND == 0) {
+          mob_data[i].data -= (1 << 6);
+        }
+      } else {
+        // When not panicking, move idly once per 4 seconds on average
+        if (r % (4 * (unsigned int)TICKS_PER_SECOND) != 0) continue;
+      }
     } else {
       // Update hostile mobs once per second
       if (server_ticks % (uint32_t)TICKS_PER_SECOND != 0) continue;
