@@ -297,7 +297,6 @@ uint8_t getTerrainAtFromCache (int x, int y, int z, int rx, int rz, ChunkAnchor 
       return B_snow;
     }
   }
-
   // Starting at 4 blocks below terrain level, generate minerals and caves
   if (y <= height - 4) {
     // Caves use the same shape as surface terrain, just mirrored
