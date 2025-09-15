@@ -181,7 +181,7 @@ uint8_t getFlowerAt(int x, int y, int z, int rx, int rz, ChunkAnchor anchor, uin
         uint32_t randPerBlock = splitmix32(anchor.hash + (uint32_t)(rx * CHUNK_SIZE + rz));
 
         if (randPerBlock % 100 < FLOWER_SPAWN_CHANCE) {
-          uint8_t flowerType = randPerBlock & 1;
+          uint8_t flowerType = (randPerBlock >> 2) & 1;
           switch (flowerType) {
             case 0: return B_dandelion;
             case 1: return B_poppy;
