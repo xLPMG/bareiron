@@ -170,7 +170,7 @@ uint8_t getHeightAt (int x, int z) {
 
 }
 
-uint8_t getFlowerAt(int x, int y, int z, int rx, int rz, ChunkAnchor anchor, ChunkFeature feature, uint8_t height) {
+uint8_t getFlowerAt(int x, int y, int z, int rx, int rz, ChunkAnchor anchor, uint8_t height) {
 
   // flowers are only generated above ground
   if (y >= 64) switch (anchor.biome) {
@@ -203,7 +203,7 @@ uint8_t getTerrainAtFromCache (int x, int y, int z, int rx, int rz, ChunkAnchor 
 #if FLOWER_SPAWN_CHANCE > 0
   // Handle flowers for all blocks that are not features
   if(x != feature.x || z != feature.z) {
-    uint8_t flower = getFlowerAt(x, y, z, rx, rz, anchor, feature, height);
+    uint8_t flower = getFlowerAt(x, y, z, rx, rz, anchor, height);
     if (flower != B_air) return flower;
   }
 #endif
