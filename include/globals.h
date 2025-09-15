@@ -58,6 +58,9 @@
 // Cave generation Y level
 #define CAVE_BASE_DEPTH 24
 
+// Chance (in percent) of spawning a flower in plains biome per block
+#define FLOWER_SPAWN_CHANCE 2
+
 // Size of every major biome in multiples of CHUNK_SIZE
 // For best performance, should also be a power of 2
 #define BIOME_SIZE (CHUNK_SIZE * 8)

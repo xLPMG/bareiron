@@ -170,7 +170,43 @@ uint8_t getHeightAt (int x, int z) {
 
 }
 
+uint8_t getFlowerAt(int x, int y, int z, int rx, int rz, ChunkAnchor anchor, ChunkFeature feature, uint8_t height) {
+
+  // flowers are only generated above ground
+  if (y >= 64) switch (anchor.biome) {
+    case W_plains: {
+      if (y == height + 1) {
+
+        // this could be moved outside the switch to be used in other biomes as well
+        uint32_t randPerBlock = splitmix32(anchor.hash + (uint32_t)(rx * CHUNK_SIZE + rz));
+
+        if (randPerBlock % 100 < FLOWER_SPAWN_CHANCE) {
+          uint8_t flowerType = randPerBlock & 1;
+          switch (flowerType) {
+            case 0: return B_dandelion;
+            case 1: return B_poppy;
+            default: return B_air;
+          }
+        }
+      }
+      break;
+    }
+    default: break;
+  }
+
+  return B_air;
+}
+
 uint8_t getTerrainAtFromCache (int x, int y, int z, int rx, int rz, ChunkAnchor anchor, ChunkFeature feature, uint8_t height) {
+
+// to increase performance, flower generation can be skipped entirely
+#if FLOWER_SPAWN_CHANCE > 0
+  // Handle flowers for all blocks that are not features
+  if(x != feature.x || z != feature.z) {
+    uint8_t flower = getFlowerAt(x, y, z, rx, rz, anchor, feature, height);
+    if (flower != B_air) return flower;
+  }
+#endif
 
   if (y >= 64 && y >= height && feature.y != 255) switch (anchor.biome) {
     case W_plains: { // Generate trees in the plains biome
@@ -198,14 +234,8 @@ uint8_t getTerrainAtFromCache (int x, int y, int z, int rx, int rz, ChunkAnchor 
         return B_oak_leaves;
       }
 
-      // Spawn some flowers
-      if (y == height + 1) {
-      if (feature.variant == 0) return B_poppy;
-      if (feature.variant == 1) return B_dandelion;
-      return B_grass_block;
-      }
-
-
+      // Since we're sure that we're above sea level and in a plains biome,
+      // there's no need to drop down to decide the surrounding blocks.
       if (y == height) return B_grass_block;
       return B_air;
     }
@@ -267,6 +297,7 @@ uint8_t getTerrainAtFromCache (int x, int y, int z, int rx, int rz, ChunkAnchor 
       return B_snow;
     }
   }
+
   // Starting at 4 blocks below terrain level, generate minerals and caves
   if (y <= height - 4) {
     // Caves use the same shape as surface terrain, just mirrored

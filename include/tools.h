@@ -36,6 +36,7 @@ void readString (int client_fd);
 
 uint32_t fast_rand ();
 uint64_t splitmix64 (uint64_t state);
+uint32_t splitmix32 (uint32_t state);
 
 #ifdef ESP_PLATFORM
   #include "esp_timer.h"
