@@ -200,7 +200,14 @@ uint8_t getTerrainAtFromCache (int x, int y, int z, int rx, int rz, ChunkAnchor 
 
       // Since we're sure that we're above sea level and in a plains biome,
       // there's no need to drop down to decide the surrounding blocks.
-      if (y == height) return B_grass_block;
+      // Spawn some flowers
+      if (y == height) {
+      if (((anchor.hash ^ x ^ z ^ y) & 15) == 0) return B_poppy;
+      if (((anchor.hash >> 8 ^ x ^ z ^ y) & 15) == 0) return B_dandelion;
+
+      return B_grass_block;
+      }
+
       return B_air;
     }
 
