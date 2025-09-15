@@ -248,6 +248,19 @@ typedef struct {
 
 #pragma pack(pop)
 
+union EntityDataValue {
+  uint8_t byte;
+  int pose;
+};
+
+typedef struct {
+  uint8_t index;
+  // 0 - Byte
+  // 21 - Pose
+  int type;
+  union EntityDataValue value;
+} EntityData;
+
 extern BlockChange block_changes[MAX_BLOCK_CHANGES];
 extern int block_changes_count;
 
