@@ -200,9 +200,8 @@ uint8_t getTerrainAtFromCache (int x, int y, int z, int rx, int rz, ChunkAnchor 
 
       // Spawn some flowers
       if (y == height + 1) {
-      if (((anchor.hash ^ x ^ z ^ y) & 15) == 0) return B_poppy;
-      if (((anchor.hash >> 8 ^ x ^ z ^ y) & 15) == 0) return B_dandelion;
-
+      if (feature.variant == 0) return B_poppy;
+      if (feature.variant == 1) return B_dandelion;
       return B_grass_block;
       }
 
