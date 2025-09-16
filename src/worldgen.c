@@ -170,41 +170,55 @@ uint8_t getHeightAt (int x, int z) {
 
 }
 
-uint8_t getFlowerAt(int x, int y, int z, int rx, int rz, ChunkAnchor anchor, uint8_t height) {
+#ifdef SPAWN_VEGETATION
+uint8_t getVegetationAt(int x, int y, int z, int rx, int rz, ChunkAnchor anchor, uint8_t height) {
 
-  // flowers are only generated above ground
-  if (y >= 64) switch (anchor.biome) {
-    case W_plains: {
-      if (y == height + 1) {
+  // vegetation is only generated above ground
+  if (y >= 64 && y == height + 1) {
 
-        // this could be moved outside the switch to be used in other biomes as well
-        uint32_t randPerBlock = splitmix32(anchor.hash + (uint32_t)(rx * CHUNK_SIZE + rz));
+    // per-block RNG
+    uint32_t randPerBlock = splitmix32(anchor.hash + (uint32_t)(rx * CHUNK_SIZE + rz));
 
-        if (randPerBlock % 100 < FLOWER_SPAWN_CHANCE) {
+    switch (anchor.biome) {
+      case W_plains: {
+        if (randPerBlock % 1000 < FLOWER_SPAWN_CHANCE) {
           uint8_t flowerType = (randPerBlock >> 2) & 1;
           switch (flowerType) {
-            case 0: return B_dandelion;
-            case 1: return B_poppy;
-            default: return B_air;
+          case 0: return B_dandelion;
+          case 1: return B_poppy;
+          default: return B_air;
           }
+        } else if (randPerBlock % 1000 < PLAINS_SHORT_GRASS_SPAWN_CHANCE) {
+          return B_short_grass;
         }
+        break;
       }
-      break;
+      case W_desert: {
+        if (randPerBlock % 1000 < DEAD_BUSH_SPAWN_CHANCE) {
+          return B_dead_bush;
+        }
+        break;
+      }
+      case W_snowy_plains: {
+        if (randPerBlock % 1000 < SNOWY_SHORT_GRASS_SPAWN_CHANCE) {
+          return B_short_grass;
+        }
+        break;
+      }
+      default: break;
     }
-    default: break;
   }
-
   return B_air;
 }
+#endif
 
 uint8_t getTerrainAtFromCache (int x, int y, int z, int rx, int rz, ChunkAnchor anchor, ChunkFeature feature, uint8_t height) {
 
-// to increase performance, flower generation can be skipped entirely
-#if FLOWER_SPAWN_CHANCE > 0
-  // Handle flowers for all blocks that are not features
+// to increase performance, vegetation generation can be skipped entirely
+#ifdef SPAWN_VEGETATION
   if(x != feature.x || z != feature.z) {
-    uint8_t flower = getFlowerAt(x, y, z, rx, rz, anchor, height);
-    if (flower != B_air) return flower;
+    uint8_t vegetation = getVegetationAt(x, y, z, rx, rz, anchor, height);
+    if (vegetation != B_air) return vegetation;
   }
 #endif
 
@@ -244,9 +258,7 @@ uint8_t getTerrainAtFromCache (int x, int y, int z, int rx, int rz, ChunkAnchor 
 
       if (x != feature.x || z != feature.z) break;
 
-      if (feature.variant == 0) {
-        if (y == height + 1) return B_dead_bush;
-      } else if (y > height) {
+      if (feature.variant == 1 && y > height) {
         // The size of the cactus is determined based on whether the terrain
         // height is even or odd at the target location
         if (height & 1 && y <= height + 3) return B_cactus;
@@ -267,15 +279,6 @@ uint8_t getTerrainAtFromCache (int x, int y, int z, int rx, int rz, ChunkAnchor 
         uint8_t dx = x > feature.x ? x - feature.x : feature.x - x;
         uint8_t dz = z > feature.z ? z - feature.z : feature.z - z;
         if (dx + dz < 4) return B_moss_carpet;
-      }
-
-      break;
-    }
-
-    case W_snowy_plains: { // Generate grass stubs in snowy plains
-
-      if (x == feature.x && z == feature.z && y == height + 1 && height >= 64) {
-        return B_short_grass;
       }
 
       break;

@@ -58,8 +58,20 @@
 // Cave generation Y level
 #define CAVE_BASE_DEPTH 24
 
-// Chance (in percent) of spawning a flower in plains biome per block
-#define FLOWER_SPAWN_CHANCE 2
+// If defined, vegetation (flowers, grass, dead bushes) will be spawned
+#define SPAWN_VEGETATION
+
+// Chance (in promille) of spawning a flower in plains biome per block
+#define FLOWER_SPAWN_CHANCE 10
+
+// Chance (in promille) of spawning a dead bush in desert biome per block
+#define DEAD_BUSH_SPAWN_CHANCE 1
+
+// Chance (in promille) of spawning short grass in snowy plains biome per block
+#define SNOWY_SHORT_GRASS_SPAWN_CHANCE 5
+
+// Chance (in promille) of spawning short grass in plains biome per block
+#define PLAINS_SHORT_GRASS_SPAWN_CHANCE 20
 
 // Size of every major biome in multiples of CHUNK_SIZE
 // For best performance, should also be a power of 2
