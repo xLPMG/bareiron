@@ -62,7 +62,7 @@
 #define SPAWN_VEGETATION
 
 // Chance (in promille) of spawning a flower in plains biome per block
-#define FLOWER_SPAWN_CHANCE 10
+#define FLOWER_SPAWN_CHANCE 7
 
 // Chance (in promille) of spawning a dead bush in desert biome per block
 #define DEAD_BUSH_SPAWN_CHANCE 1

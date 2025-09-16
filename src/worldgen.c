@@ -173,40 +173,34 @@ uint8_t getHeightAt (int x, int z) {
 #ifdef SPAWN_VEGETATION
 uint8_t getVegetationAt(int x, int y, int z, int rx, int rz, ChunkAnchor anchor, uint8_t height) {
 
-  // vegetation is only generated above ground
-  if (y >= 64 && y == height + 1) {
+  // Only generate vegetation above ground and at the correct height
+  if (y < 64 || y != height + 1) return B_air;
 
-    // per-block RNG
-    uint32_t randPerBlock = splitmix32(anchor.hash + (uint32_t)(rx * CHUNK_SIZE + rz));
+  // per-block RNG value
+  uint32_t randPerBlock = splitmix32(anchor.hash + (uint32_t)(rx * CHUNK_SIZE + rz));
+  uint16_t promilleChance = randPerBlock % 1000;
 
-    switch (anchor.biome) {
-      case W_plains: {
-        if (randPerBlock % 1000 < FLOWER_SPAWN_CHANCE) {
-          uint8_t flowerType = (randPerBlock >> 2) & 1;
-          switch (flowerType) {
-          case 0: return B_dandelion;
-          case 1: return B_poppy;
-          default: return B_air;
-          }
-        } else if (randPerBlock % 1000 < PLAINS_SHORT_GRASS_SPAWN_CHANCE) {
-          return B_short_grass;
-        }
-        break;
+  switch (anchor.biome) {
+    case W_plains:
+      if (promilleChance < FLOWER_SPAWN_CHANCE) {
+        return ((randPerBlock >> 2) & 1) ? B_poppy : B_dandelion;
       }
-      case W_desert: {
-        if (randPerBlock % 1000 < DEAD_BUSH_SPAWN_CHANCE) {
-          return B_dead_bush;
-        }
-        break;
+      if (promilleChance < PLAINS_SHORT_GRASS_SPAWN_CHANCE) {
+        return B_short_grass;
       }
-      case W_snowy_plains: {
-        if (randPerBlock % 1000 < SNOWY_SHORT_GRASS_SPAWN_CHANCE) {
-          return B_short_grass;
-        }
-        break;
+      break;
+    case W_desert:
+      if (promilleChance < DEAD_BUSH_SPAWN_CHANCE) {
+        return B_dead_bush;
       }
-      default: break;
-    }
+      break;
+    case W_snowy_plains:
+      if (promilleChance < SNOWY_SHORT_GRASS_SPAWN_CHANCE) {
+        return B_short_grass;
+      }
+      break;
+    default:
+      break;
   }
   return B_air;
 }
