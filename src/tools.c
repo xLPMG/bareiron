@@ -238,6 +238,15 @@ uint64_t splitmix64 (uint64_t state) {
   return z ^ (z >> 31);
 }
 
+// https://stackoverflow.com/a/52056161
+uint32_t splitmix32 (uint32_t state) {
+  uint32_t z = state + 0x9e3779b9;
+  z ^= z >> 16; z *= 0x21f0aaad;
+  z ^= z >> 15; z *= 0x735a2d97;
+  z ^= z >> 15;
+  return z;
+}
+
 #ifndef ESP_PLATFORM
 // Returns system time in microseconds.
 // On ESP-IDF, this is available in "esp_timer.h", and returns time *since

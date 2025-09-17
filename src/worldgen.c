@@ -173,33 +173,52 @@ uint8_t getHeightAt (int x, int z) {
 uint8_t getTerrainAtFromCache (int x, int y, int z, int rx, int rz, ChunkAnchor anchor, ChunkFeature feature, uint8_t height) {
 
   if (y >= 64 && y >= height && feature.y != 255) switch (anchor.biome) {
-    case W_plains: { // Generate trees in the plains biome
-
-      // Don't generate trees underwater
+    case W_plains: {
+      // Don't generate features underwater
       if (feature.y < 64) break;
 
-      // Handle tree stem and the dirt under it
-      if (x == feature.x && z == feature.z) {
-        if (y == feature.y - 1) return B_dirt;
-        if (y >= feature.y && y < feature.y - feature.variant + 6) return B_oak_log;
+      // 0-1: tree
+      if (feature.variant < 2) {
+
+        // Handle tree stem and the dirt under it
+        if (x == feature.x && z == feature.z) {
+          if (y == feature.y - 1) return B_dirt;
+          if (y >= feature.y && y < feature.y - (feature.variant & 1) + 6) return B_oak_log;
+        }
+
+        // Get X/Z distance from center of tree
+        uint8_t dx = x > feature.x ? x - feature.x : feature.x - x;
+        uint8_t dz = z > feature.z ? z - feature.z : feature.z - z;
+
+        // Generate leaf clusters
+        if (dx < 3 && dz < 3 && y > feature.y - (feature.variant & 1) + 2 && y < feature.y - (feature.variant & 1) + 5) {
+          if (y == feature.y - (feature.variant & 1) + 4 && dx == 2 && dz == 2) break;
+          return B_oak_leaves;
+        }
+        if (dx < 2 && dz < 2 && y >= feature.y - (feature.variant & 1) + 5 && y <= feature.y - (feature.variant & 1) + 6) {
+          if (y == feature.y - (feature.variant & 1) + 6 && dx == 1 && dz == 1) break;
+          return B_oak_leaves;
+        }
+      // 2: flower patch
+      } else if (feature.variant == 2) {
+        uint32_t flowerRNG = splitmix32(anchor.hash);
+        uint8_t flowerType = flowerRNG & 3;
+
+        // flower patch is 3x3 blocks
+        if (x >= feature.x - 1 && x <= feature.x + 1 && z >= feature.z - 1 && z <= feature.z + 1 && y == height + 1) {
+          if (flowerType == 0) return B_dandelion;
+          if (flowerType == 1) return B_poppy;
+          if (flowerType == 2) return B_azure_bluet;
+          if (flowerType == 3) return B_allium;
+        }
+      // 3: grass
+      } else if (feature.variant == 3) {
+        if (x == feature.x && z == feature.z && y == height + 1) {
+          return B_short_grass;
+        }
       }
 
-      // Get X/Z distance from center of tree
-      uint8_t dx = x > feature.x ? x - feature.x : feature.x - x;
-      uint8_t dz = z > feature.z ? z - feature.z : feature.z - z;
-
-      // Generate leaf clusters
-      if (dx < 3 && dz < 3 && y > feature.y - feature.variant + 2 && y < feature.y - feature.variant + 5) {
-        if (y == feature.y - feature.variant + 4 && dx == 2 && dz == 2) break;
-        return B_oak_leaves;
-      }
-      if (dx < 2 && dz < 2 && y >= feature.y - feature.variant + 5 && y <= feature.y - feature.variant + 6) {
-        if (y == feature.y - feature.variant + 6 && dx == 1 && dz == 1) break;
-        return B_oak_leaves;
-      }
-
-      // Since we're sure that we're above sea level and in a plains biome,
-      // there's no need to drop down to decide the surrounding blocks.
+      // Surface block
       if (y == height) return B_grass_block;
       return B_air;
     }
@@ -348,7 +367,7 @@ ChunkFeature getFeatureFromAnchor (ChunkAnchor anchor) {
       mod_abs(feature.x, CHUNK_SIZE), mod_abs(feature.z, CHUNK_SIZE),
       anchor.x, anchor.z, anchor.hash, anchor.biome
     ) + 1;
-    feature.variant = (anchor.hash >> (feature.x + feature.z)) & 1;
+    feature.variant = (anchor.hash >> (feature.x + feature.z)) & 0x3;
   }
 
   return feature;

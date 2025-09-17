@@ -738,7 +738,9 @@ uint8_t isInstantlyMined (PlayerData *player, uint8_t block) {
     block == B_short_grass ||
     block == B_torch ||
     block == B_lily_pad ||
-    block == B_oak_sapling
+    block == B_oak_sapling ||
+    block == B_poppy ||
+    block == B_dandelion
   );
 
 }
@@ -753,7 +755,9 @@ uint8_t isColumnBlock (uint8_t block) {
     block == B_dead_bush ||
     block == B_sand ||
     block == B_torch ||
-    block == B_oak_sapling
+    block == B_oak_sapling ||
+    block == B_poppy ||
+    block == B_dandelion
   );
 }
 
@@ -767,7 +771,9 @@ uint8_t isPassableBlock (uint8_t block) {
     block == B_moss_carpet ||
     block == B_short_grass ||
     block == B_dead_bush ||
-    block == B_torch
+    block == B_torch ||
+    block == B_poppy ||
+    block == B_dandelion
   );
 }
 // Checks whether the given block is non-solid and spawnable
