@@ -174,6 +174,7 @@ uint8_t getTerrainAtFromCache (int x, int y, int z, int rx, int rz, ChunkAnchor 
 
   if (y >= 64 && y >= height && feature.y != 255) switch (anchor.biome) {
     case W_plains: {
+      
       // Don't generate features underwater
       if (feature.y < 64) break;
 
