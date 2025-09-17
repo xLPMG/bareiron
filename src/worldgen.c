@@ -174,7 +174,7 @@ uint8_t getTerrainAtFromCache (int x, int y, int z, int rx, int rz, ChunkAnchor 
 
   if (y >= 64 && y >= height && feature.y != 255) switch (anchor.biome) {
     case W_plains: {
-      
+
       // Don't generate features underwater
       if (feature.y < 64) break;
 
@@ -229,7 +229,8 @@ uint8_t getTerrainAtFromCache (int x, int y, int z, int rx, int rz, ChunkAnchor 
         }
       }
 
-      // Surface block
+      // Since we're sure that we're above sea level and in a plains biome,
+      // there's no need to drop down to decide the surrounding blocks.
       if (y == height) return B_grass_block;
       return B_air;
     }
