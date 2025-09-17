@@ -60,9 +60,7 @@ const blockWhitelist = [
   "composter",
   "coal_block",
   "copper_ore",
-  "copper_block",
-  "poppy",
-  "dandelion"
+  "copper_block"
 ];
 
 // Currently, only 4 biome types are supported, excluding "beach"
@@ -378,9 +376,7 @@ async function convert () {
         itemsAndBlocks.blockRegistry["diamond_block"],
         itemsAndBlocks.blockRegistry["redstone_block"],
         itemsAndBlocks.blockRegistry["coal_block"],
-        itemsAndBlocks.blockRegistry["copper_block"],
-        itemsAndBlocks.blockRegistry["poppy"],
-        itemsAndBlocks.blockRegistry["dandelion"]
+        itemsAndBlocks.blockRegistry["copper_block"]
       ],
       "mineable/axe": [
         itemsAndBlocks.blockRegistry["oak_log"],
