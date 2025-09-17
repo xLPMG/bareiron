@@ -177,8 +177,8 @@ uint8_t getTerrainAtFromCache (int x, int y, int z, int rx, int rz, ChunkAnchor 
       // Don't generate features underwater
       if (feature.y < 64) break;
 
-      // 0-1: tree
-      if (feature.variant < 2) {
+      // 0-2: tree
+      if (feature.variant <= 2) {
 
         // Handle tree stem and the dirt under it
         if (x == feature.x && z == feature.z) {
@@ -199,21 +199,31 @@ uint8_t getTerrainAtFromCache (int x, int y, int z, int rx, int rz, ChunkAnchor 
           if (y == feature.y - (feature.variant & 1) + 6 && dx == 1 && dz == 1) break;
           return B_oak_leaves;
         }
-      // 2: flower patch
-      } else if (feature.variant == 2) {
-        uint32_t flowerRNG = splitmix32(anchor.hash);
-        uint8_t flowerType = flowerRNG & 3;
-
-        // flower patch is 3x3 blocks
-        if (x >= feature.x - 1 && x <= feature.x + 1 && z >= feature.z - 1 && z <= feature.z + 1 && y == height + 1) {
-          if (flowerType == 0) return B_dandelion;
-          if (flowerType == 1) return B_poppy;
-          if (flowerType == 2) return B_azure_bluet;
-          if (flowerType == 3) return B_allium;
-        }
-      // 3: grass
+      // 3: flower patch (4 types, 11x11 patch)
       } else if (feature.variant == 3) {
-        if (x == feature.x && z == feature.z && y == height + 1) {
+        uint32_t flowerRNG = splitmix32(anchor.hash + (uint32_t)(rx * CHUNK_SIZE + rz));
+
+        // 5% spawn chance on each block in the patch
+        if((flowerRNG & 0x7F) % 100 > 5) break;
+
+        if (x >= feature.x - 5 && x <= feature.x + 5 && z >= feature.z - 5 && z <= feature.z + 5 && y == height + 1) {
+            // the hash seems to have a weird pattern, where the lower 2 bits were never '10'
+            // shifting by 8 bits seems to give a much better distribution
+            switch ((anchor.hash >> 8) & 0x3) {
+            case 0: return B_dandelion;
+            case 1: return B_poppy;
+            case 2: return B_azure_bluet;
+            case 3: return (flowerRNG & 0x1) == 0 ? B_white_tulip : B_pink_tulip;
+            }
+        }
+      // 4-7: grass (11x11 patch)
+      } else if (feature.variant <= 7) {
+        uint32_t grassRNG = splitmix32(anchor.hash + (uint32_t)(rx * CHUNK_SIZE + rz));
+
+        // 40% spawn chance on each block in the patch
+        if ((grassRNG & 0x7F) % 100 > 40) break;
+
+        if (x >= feature.x - 5 && x <= feature.x + 5 && z >= feature.z - 5 && z <= feature.z + 5 && y == height + 1) {
           return B_short_grass;
         }
       }
@@ -227,13 +237,14 @@ uint8_t getTerrainAtFromCache (int x, int y, int z, int rx, int rz, ChunkAnchor 
 
       if (x != feature.x || z != feature.z) break;
 
-      if (feature.variant == 0) {
+      // 0-3: dead bush
+      if (feature.variant <= 3) {
         if (y == height + 1) return B_dead_bush;
-      } else if (y > height) {
-        // The size of the cactus is determined based on whether the terrain
-        // height is even or odd at the target location
-        if (height & 1 && y <= height + 3) return B_cactus;
-        if (y <= height + 2) return B_cactus;
+      // 4-7: cactus
+      } else if (feature.variant <= 7) {
+        uint8_t cactus_height = 2 + (feature.variant - 4);
+        if (cactus_height > 4) cactus_height = 4;
+        if (y > height && y <= height + cactus_height) return B_cactus;
       }
 
       break;
@@ -367,7 +378,7 @@ ChunkFeature getFeatureFromAnchor (ChunkAnchor anchor) {
       mod_abs(feature.x, CHUNK_SIZE), mod_abs(feature.z, CHUNK_SIZE),
       anchor.x, anchor.z, anchor.hash, anchor.biome
     ) + 1;
-    feature.variant = (anchor.hash >> (feature.x + feature.z)) & 0x3;
+    feature.variant = (anchor.hash >> (feature.x + feature.z)) & 0x7;
   }
 
   return feature;
